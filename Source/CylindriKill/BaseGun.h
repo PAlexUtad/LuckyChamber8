@@ -1,0 +1,96 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "BaseGun.generated.h"
+
+UCLASS()
+class CYLINDRIKILL_API ABaseGun : public AActor
+{
+	GENERATED_BODY()
+	
+public: 
+	// Sets default values for this actor's properties
+	ABaseGun();
+
+	// -------------------------------------------------------------
+	// Firing (called by the player, forwarded down from input)
+	// -------------------------------------------------------------
+
+	/** Called on input press. Default (semi-auto) behaviour: fire a single shot. */
+	UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
+	virtual void StartFire();
+
+	/** Called on input release. No-op by default; override for automatic weapons that loop while held. */
+	UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
+	virtual void StopFire();
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	/** Performs the actual hitscan trace and applies cooldown/ammo. Override to customize behaviour or VFX. */
+	UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
+	virtual void Fire();
+
+	void ResetFireCooldown();
+
+	// -------------------------------------------------------------
+	// Components
+	// -------------------------------------------------------------
+
+	/** Root scene component - keeps the actor's transform independent of any single mesh. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USceneComponent> GunRoot;
+
+	/** Main body mesh. Subclasses attach any extra parts (barrels, cylinders, etc.) to this. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> BodyMesh;
+
+	// -------------------------------------------------------------
+	// Fire tuning
+	// -------------------------------------------------------------
+
+	/** Seconds between shots. Also functions as the "rate of fire" cooldown gate. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Fire")
+	float FireRate = 0.35f;
+
+	/** Max range of the hitscan trace, in uu. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Fire")
+	float TraceRange = 10000.f;
+
+	/** How many rounds this gun holds before it can no longer fire. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Fire")
+	int32 MaxAmmo = 8;
+
+	/** Rounds currently loaded. Reset to MaxAmmo in BeginPlay. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Fire")
+	int32 CurrentAmmo = 8;
+
+	/** If true, draw a debug line/sphere for each shot so hits are visible instantly in the viewport. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
+	bool bDrawDebugTrace = true;
+
+	bool bCanFire = true;
+	FTimerHandle FireCooldownTimerHandle;
+	/** Target and current recoil offsets for smooth spring recovery */
+	FVector TargetRecoilLocation = FVector::ZeroVector;
+	FVector CurrentRecoilLocation = FVector::ZeroVector;
+	FRotator TargetRecoilRotation = FRotator::ZeroRotator;
+	FRotator CurrentRecoilRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Recoil")
+	float RecoilKickBack = -15.f; // Distance back in uu
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Recoil")
+	float RecoilKickPitch = -8.f; // Degrees pitch upward
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Recoil")
+	float RecoilInterpSpeed = 15.f;
+public: 
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+};
