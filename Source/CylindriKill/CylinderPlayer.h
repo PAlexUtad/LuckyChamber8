@@ -75,12 +75,16 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> FireAction;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    TObjectPtr<UInputAction> ParryAction;
+
     // ------------------------------------------------------------------
     // Input Handlers
     // ------------------------------------------------------------------
 
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
+    void StartParry();
     void StartDash();
 
     /** Forwards the fire-pressed input down to whatever gun is currently equipped. */

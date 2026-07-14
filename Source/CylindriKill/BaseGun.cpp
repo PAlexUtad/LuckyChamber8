@@ -2,11 +2,14 @@
 
 #include "BaseGun.h"
 
+#include "CylinderEnemyChar.h"
 #include "Camera/CameraComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "BaseProjectile.h"
 
 // Sets default values
 ABaseGun::ABaseGun()
@@ -50,6 +53,103 @@ void ABaseGun::Tick(float DeltaTime)
 		GunRoot->SetRelativeLocation(CurrentRecoilLocation);
 		GunRoot->SetRelativeRotation(CurrentRecoilRotation);
 	}
+
+	// Smoothly animate the barrel opening and closing
+	CurrentBarrelRotation = FMath::RInterpTo(CurrentBarrelRotation, TargetBarrelRotation, DeltaTime, 15.f);
+	if (BodyMesh) // Or whichever sub-mesh represents your opening barrel/slide
+	{
+		BodyMesh->SetRelativeRotation(CurrentBarrelRotation);
+	}
+}
+
+
+void ABaseGun::StartParry()
+{
+    if (!bCanParry || bIsParrying) return;
+
+    bIsParrying = true;
+    bCanParry = true; // prevent re-triggering instantly
+    TargetBarrelRotation = BarrelOpenRotationOffset; // Trigger open animation
+
+    if (GEngine)
+    {
+       GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Parry Active!"));
+    }
+
+    // Check for incoming projectiles immediately during parry frame
+    PerformParryTrace();
+
+    // End parry window after short duration
+    GetWorldTimerManager().SetTimer(ParryTimerHandle, this, &ABaseGun::EndParry, ParryDuration, false);
+}
+
+void ABaseGun::StopParry()
+{
+    // Optional early release logic if needed
+}
+
+void ABaseGun::PerformParryTrace()
+{
+	const APawn* OwningPawn = Cast<APawn>(GetOwner());
+	const UCameraComponent* AimCamera = OwningPawn ? OwningPawn->FindComponentByClass<UCameraComponent>() : nullptr;
+	if (!AimCamera) return;
+
+	// Increased reach from 80.f to 250.f so fast projectiles aren't skipped
+	const FVector TraceStart = AimCamera->GetComponentLocation();
+	const FVector TraceEnd = TraceStart + (AimCamera->GetForwardVector() * 250.f); 
+
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+	if (OwningPawn) ActorsToIgnore.Add(const_cast<APawn*>(OwningPawn));
+
+	// Search specifically for WorldDynamic objects (which is what your ABaseProjectile is set to)
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+
+	FHitResult HitResult;
+	const bool bHit = UKismetSystemLibrary::SphereTraceSingleForObjects(
+		GetWorld(),
+		TraceStart,
+		TraceEnd,
+		ParrySphereRadius,
+		ObjectTypes,
+		false,
+		ActorsToIgnore,
+		bDrawDebugTrace ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+		HitResult,
+		true,
+		FLinearColor::Red,
+		FLinearColor::Green,
+		1.5f
+	);
+
+	if (bHit && HitResult.GetActor())
+	{
+		AActor* HitActor = HitResult.GetActor();
+		if (ABaseProjectile* Projectile = Cast<ABaseProjectile>(HitActor))
+		{
+			// Caught the bullet! Destroy the enemy projectile and give feedback
+			Projectile->Destroy();
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("PARRY SUCCESSFUL! Bullet Caught!"));
+			}
+		}
+	}
+}
+
+void ABaseGun::EndParry()
+{
+    bIsParrying = false;
+    TargetBarrelRotation = FRotator::ZeroRotator; // Close barrel animation
+
+    // Start cooldown
+    GetWorldTimerManager().SetTimer(ParryCooldownTimerHandle, this, &ABaseGun::ResetParryCooldown, ParryCooldown, false);
+}
+
+void ABaseGun::ResetParryCooldown()
+{
+    bCanParry = true;
 }
 
 void ABaseGun::StartFire()
@@ -131,8 +231,19 @@ void ABaseGun::Fire()
 
 	if (bHit && GEngine)
 	{
+		AActor* HitActor = HitResult.GetActor();
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Green,
-			FString::Printf(TEXT("Hit: %s"), *GetNameSafe(HitResult.GetActor())));
+			FString::Printf(TEXT("Hit: %s"), *GetNameSafe(HitActor)));
+
+		// Directly check if the hit actor is our enemy character and delete it instantly
+		if (HitActor)
+		{
+			// If you named your character class ACylinderEnemyChar, cast and destroy:
+			if (ACylinderEnemyChar* Enemy = Cast<ACylinderEnemyChar>(HitActor))
+			{
+				Enemy->Destroy();
+			}
+		}
 	}
 
 	--CurrentAmmo;
@@ -140,7 +251,6 @@ void ABaseGun::Fire()
 	TargetRecoilLocation.X += RecoilKickBack;
 	TargetRecoilRotation.Pitch += RecoilKickPitch;
 
-	
 	// Gate the next shot until FireRate seconds have passed.
 	bCanFire = false;
 	GetWorldTimerManager().SetTimer(FireCooldownTimerHandle, this, &ABaseGun::ResetFireCooldown, FireRate, false);

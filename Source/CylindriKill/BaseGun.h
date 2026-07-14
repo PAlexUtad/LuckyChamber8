@@ -26,8 +26,36 @@ public:
 	/** Called on input release. No-op by default; override for automatic weapons that loop while held. */
 	UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
 	virtual void StopFire();
+	virtual void StartParry();
+	virtual void StopParry();
 
 protected:
+	/** Parry configuration */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
+	float ParryDuration = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
+	float ParryCooldown = 0.15f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
+	float ParrySphereRadius = 50.f;
+
+	bool bCanParry = true;
+	bool bIsParrying = false;
+	FTimerHandle ParryTimerHandle;
+	FTimerHandle ParryCooldownTimerHandle;
+
+	/** Barrel open animation rotation/offset target */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
+	FRotator BarrelOpenRotationOffset = FRotator(0.f, 0.f, -45.f);
+
+	FRotator CurrentBarrelRotation = FRotator::ZeroRotator;
+	FRotator TargetBarrelRotation = FRotator::ZeroRotator;
+
+	void PerformParryTrace();
+	void ResetParryCooldown();
+	void EndParry();
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 

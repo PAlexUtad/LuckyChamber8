@@ -169,6 +169,10 @@ void ACylinderPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
           EIC->BindAction(FireAction, ETriggerEvent::Started, this, &ACylinderPlayer::StartFire);
           EIC->BindAction(FireAction, ETriggerEvent::Completed, this, &ACylinderPlayer::StopFire);
        }
+       if (ParryAction)
+       {
+          EIC->BindAction(ParryAction, ETriggerEvent::Started, this, &ACylinderPlayer::StartParry);
+       }
     }
 }
 
@@ -201,6 +205,17 @@ void ACylinderPlayer::Look(const FInputActionValue& Value)
        // on the IA_Look asset (standard Enhanced Input convention) rather than flipping here.
        AddControllerPitchInput(LookAxis.Y);
     }
+}
+
+void ACylinderPlayer::StartParry()
+{
+   if (GunChildComponent)
+   {
+      if (ABaseGun* Gun = Cast<ABaseGun>(GunChildComponent->GetChildActor()))
+      {
+         Gun->StartParry();
+      }
+   }
 }
 
 void ACylinderPlayer::StartDash()
