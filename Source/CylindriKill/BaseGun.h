@@ -51,7 +51,17 @@ protected:
 
 	FRotator CurrentBarrelRotation = FRotator::ZeroRotator;
 	FRotator TargetBarrelRotation = FRotator::ZeroRotator;
+	/** How far (and which direction, relative to CylinderMesh's parent) the cylinder slides out during parry */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
+	FVector CylinderSlideOffset = FVector(0.f, 15.f, 0.f); // +Y = left, based on this mesh's local gizmo
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
+	float CylinderSlideInterpSpeed = 12.f;
+
+	FVector CurrentCylinderSlideLocation = FVector::ZeroVector;
+	FVector TargetCylinderSlideLocation = FVector::ZeroVector;
+	FVector CylinderBaseLoc = FVector::ZeroVector;
+	
 	void PerformParryTrace();
 	void ResetParryCooldown();
 	void EndParry();
@@ -78,6 +88,10 @@ protected:
 	/** Main body mesh. Subclasses attach any extra parts (barrels, cylinders, etc.) to this. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> BodyMesh;
+
+	/** Cylinder/revolver mesh — created and attached in subclass constructor (e.g. ACylinderGun). Slides during parry. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> CylinderMesh;
 
 	// -------------------------------------------------------------
 	// Fire tuning

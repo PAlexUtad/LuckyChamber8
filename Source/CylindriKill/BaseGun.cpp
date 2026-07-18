@@ -32,7 +32,9 @@ ABaseGun::ABaseGun()
 void ABaseGun::BeginPlay()
 {
 	Super::BeginPlay();
-
+	CylinderBaseLoc = CylinderMesh->GetRelativeLocation();
+	CurrentCylinderSlideLocation = CylinderBaseLoc;
+	TargetCylinderSlideLocation = CylinderBaseLoc;
 	CurrentAmmo = MaxAmmo;
 }
 
@@ -62,6 +64,13 @@ void ABaseGun::Tick(float DeltaTime)
 		BodyMesh->SetRelativeRotation(CurrentBarrelRotation);
 	}
 
+	// Smoothly slide the cylinder mesh out (and back) during parry
+	CurrentCylinderSlideLocation = FMath::VInterpTo(CurrentCylinderSlideLocation, TargetCylinderSlideLocation, DeltaTime, CylinderSlideInterpSpeed);
+	if (CylinderMesh)
+	{
+		CylinderMesh->SetRelativeLocation(CurrentCylinderSlideLocation);
+	}
+
 	if (bIsParrying)
 	{
 		// Check for incoming projectiles immediately during parry frame
@@ -72,18 +81,19 @@ void ABaseGun::Tick(float DeltaTime)
 
 void ABaseGun::StartParry()
 {
-    if (!bCanParry || bIsParrying) return;
+	if (!bCanParry || bIsParrying) return;
 
-    bIsParrying = true;
-    bCanParry = true; // prevent re-triggering instantly
-    TargetBarrelRotation = BarrelOpenRotationOffset; // Trigger open animation
+	bIsParrying = true;
+	bCanParry = true; // prevent re-triggering instantly
+	TargetBarrelRotation = BarrelOpenRotationOffset; // Trigger open animation
+	TargetCylinderSlideLocation = CylinderSlideOffset; // Trigger cylinder slide-out
 
-    if (GEngine)
-    {
-       GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Parry Active!"));
-    }
-    // End parry window after short duration
-    GetWorldTimerManager().SetTimer(ParryTimerHandle, this, &ABaseGun::EndParry, ParryDuration, false);
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Parry Active!"));
+	}
+	// End parry window after short duration
+	GetWorldTimerManager().SetTimer(ParryTimerHandle, this, &ABaseGun::EndParry, ParryDuration, false);
 }
 
 void ABaseGun::StopParry()
@@ -144,11 +154,12 @@ void ABaseGun::PerformParryTrace()
 
 void ABaseGun::EndParry()
 {
-    bIsParrying = false;
-    TargetBarrelRotation = FRotator::ZeroRotator; // Close barrel animation
+	bIsParrying = false;
+	TargetBarrelRotation = FRotator::ZeroRotator; // Close barrel animation
+	TargetCylinderSlideLocation = CylinderBaseLoc; // Slide cylinder back in
 
-    // Start cooldown
-    GetWorldTimerManager().SetTimer(ParryCooldownTimerHandle, this, &ABaseGun::ResetParryCooldown, ParryCooldown, false);
+	// Start cooldown
+	GetWorldTimerManager().SetTimer(ParryCooldownTimerHandle, this, &ABaseGun::ResetParryCooldown, ParryCooldown, false);
 }
 
 void ABaseGun::AddAmmo()

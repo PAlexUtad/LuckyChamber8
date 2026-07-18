@@ -19,9 +19,7 @@ public:
 	ACylinderGun();
 
 protected:
-	/** Extra mesh piece attached to the inherited BodyMesh. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStaticMeshComponent> CylinderMesh;
+
 
 	//~ Begin ABaseGun Interface
 	/** Runs the inherited hitscan fire logic, then spins the cylinder a notch for a revolver feel. */
