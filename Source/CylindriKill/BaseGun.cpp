@@ -130,6 +130,7 @@ void ABaseGun::PerformParryTrace()
 		{
 			// Caught the bullet! Destroy the enemy projectile and give feedback
 			Projectile->Destroy();
+			AddAmmo();
 			if (GEngine)
 			{
 				GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("PARRY SUCCESSFUL! Bullet Caught!"));
@@ -145,6 +146,18 @@ void ABaseGun::EndParry()
 
     // Start cooldown
     GetWorldTimerManager().SetTimer(ParryCooldownTimerHandle, this, &ABaseGun::ResetParryCooldown, ParryCooldown, false);
+}
+
+void ABaseGun::AddAmmo()
+{
+	if (CurrentAmmo < 8)
+	{
+		CurrentAmmo++;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange, TEXT("Full Ammo! Making Bullets Stronger"));
+	}
 }
 
 void ABaseGun::ResetParryCooldown()

@@ -56,6 +56,8 @@ protected:
 	void ResetParryCooldown();
 	void EndParry();
 
+	// Add Ammunition 
+	void AddAmmo();
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
