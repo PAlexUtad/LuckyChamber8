@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "BaseProjectile.h"
+#include "CylinderPlayer.h"
 
 // Sets default values
 ABaseGun::ABaseGun()
@@ -200,13 +201,17 @@ void ABaseGun::Fire()
 		}
 		return;
 	}
-
+	
 	// -------------------------------------------------------------
 	// Find the camera to aim from. The gun is a child actor attached
 	// under the player's camera, so we look the camera up via the
 	// owning pawn rather than depending on any specific player class.
 	// -------------------------------------------------------------
 	const APawn* OwningPawn = Cast<APawn>(GetOwner());
+	if (IsValid(OwningPawn))
+	{
+		Cast<ACylinderPlayer>(OwningPawn)->PlayShootCameraShake();
+	}
 	const UCameraComponent* AimCamera = OwningPawn ? OwningPawn->FindComponentByClass<UCameraComponent>() : nullptr;
 	if (!AimCamera)
 	{

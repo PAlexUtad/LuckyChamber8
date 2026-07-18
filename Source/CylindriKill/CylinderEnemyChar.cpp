@@ -3,11 +3,13 @@
 #include "CylinderEnemyChar.h"
 
 #include "BaseProjectile.h"
+#include "TimerManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "../Plugins/2D/Paper2D/Source/Paper2D/Classes/PaperSpriteComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
+#include "Runtime/AIModule/Classes/AIController.h"
 
 ACylinderEnemyChar::ACylinderEnemyChar()
 {
@@ -36,6 +38,10 @@ ACylinderEnemyChar::ACylinderEnemyChar()
 	SpriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteComponent"));
 	SpriteComponent->SetupAttachment(RootComponent);
 	SpriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+
+	AIControllerClass = AAIController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 void ACylinderEnemyChar::BeginPlay()
@@ -71,6 +77,7 @@ void ACylinderEnemyChar::Tick(float DeltaTime)
 	{
 		RotateToFacePlayer(DeltaTime);
 	}
+	UpdateMovement(DeltaTime);
 }
 
 void ACylinderEnemyChar::RotateToFacePlayer(float DeltaTime)
@@ -107,4 +114,45 @@ float ACylinderEnemyChar::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	}
 
 	return ActualDamage;
+}
+
+void ACylinderEnemyChar::MoveToLocationViaNav(const FVector& TargetLocation, float AcceptanceRadius)
+{
+	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		AIController->MoveToLocation(
+			TargetLocation, AcceptanceRadius, /*bStopOnOverlap*/ true, /*bUsePathfinding*/ true,
+			/*bProjectDestinationToNavigation*/ true, /*bCanStrafe*/ true, nullptr, /*bAllowPartialPath*/ true);
+	}
+}
+
+void ACylinderEnemyChar::MoveToActorViaNav(AActor* TargetActor, float AcceptanceRadius)
+{
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (!AIController)
+	{
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Red, TEXT("No AIController!"));
+		return;
+	}
+
+	if (!TargetActor) {
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Red, TEXT("No TARGET!"));
+		return;
+	}
+
+	const EPathFollowingRequestResult::Type Result = AIController->MoveToActor(TargetActor, AcceptanceRadius, true, true, true);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Yellow,
+			FString::Printf(TEXT("MoveToActor result: %d"), (int32)Result));
+	}
+}
+
+void ACylinderEnemyChar::StopNavMovement()
+{
+	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		AIController->StopMovement();
+	}
 }

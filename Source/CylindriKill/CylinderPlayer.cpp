@@ -10,6 +10,11 @@
 #include "GameFramework/PlayerController.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "TimerManager.h"
+#include "Camera/CameraShakeBase.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
 
 ACylinderPlayer::ACylinderPlayer()
 {
@@ -320,7 +325,7 @@ void ACylinderPlayer::StartFire()
    if (ABaseGun* Gun = Cast<ABaseGun>(ChildActor))
    {
       GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, TEXT("StartFire: Calling Gun->StartFire()"));
-      PlayShootCameraShake();
+      
       Gun->StartFire();
    }
    else

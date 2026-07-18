@@ -3,7 +3,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "../Plugins/2D/Paper2D/Source/Paper2D/Classes/PaperSpriteComponent.h"
+#include "Runtime/AIModule/Classes/AIController.h"
 #include "CylinderEnemyChar.generated.h"
+
 
 UCLASS()
 class CYLINDRIKILL_API ACylinderEnemyChar : public ACharacter
@@ -38,7 +40,19 @@ protected:
 	float ShootInterval = 2.0f;
 
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void FireAtPlayer();
+	virtual void FireAtPlayer();
+
+	/** Hook for subclasses to add custom movement each tick, called after facing logic */
+	virtual void UpdateMovement(float DeltaTime) {}
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void MoveToLocationViaNav(const FVector& TargetLocation, float AcceptanceRadius = 50.f);
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void MoveToActorViaNav(AActor* TargetActor, float AcceptanceRadius = 50.f);
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void StopNavMovement();
 private:
 	void RotateToFacePlayer(float DeltaTime);
 };

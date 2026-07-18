@@ -35,7 +35,6 @@ void ACylinderGun::Fire()
 {
 	// Cache ammo before firing so we only spin the cylinder when a shot actually goes off
 	// (Super::Fire() silently no-ops on cooldown/empty mag).
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("ACylinderGun StartFIre!"));
 	const int32 AmmoBeforeFire = CurrentAmmo;
 
 	Super::Fire();
