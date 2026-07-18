@@ -61,6 +61,12 @@ void ABaseGun::Tick(float DeltaTime)
 	{
 		BodyMesh->SetRelativeRotation(CurrentBarrelRotation);
 	}
+
+	if (bIsParrying)
+	{
+		// Check for incoming projectiles immediately during parry frame
+		PerformParryTrace();
+	}
 }
 
 
@@ -76,10 +82,6 @@ void ABaseGun::StartParry()
     {
        GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Parry Active!"));
     }
-
-    // Check for incoming projectiles immediately during parry frame
-    PerformParryTrace();
-
     // End parry window after short duration
     GetWorldTimerManager().SetTimer(ParryTimerHandle, this, &ABaseGun::EndParry, ParryDuration, false);
 }
@@ -250,8 +252,8 @@ void ABaseGun::Fire()
 	if (bHit && GEngine)
 	{
 		AActor* HitActor = HitResult.GetActor();
-		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Green,
-			FString::Printf(TEXT("Hit: %s"), *GetNameSafe(HitActor)));
+		//GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Green,
+			//FString::Printf(TEXT("Hit: %s"), *GetNameSafe(HitActor)));
 
 		// Directly check if the hit actor is our enemy character and delete it instantly
 		if (HitActor)
