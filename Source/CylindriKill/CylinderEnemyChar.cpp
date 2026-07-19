@@ -59,6 +59,8 @@ void ACylinderEnemyChar::FireAtPlayer()
 	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if (!PlayerPawn || !ProjectileClass) return;
 
+	if (!IsPlayerInRange()) return; // don't fire while dormant, even if a timer already queued this call
+
 	const FVector SpawnLocation = GetActorLocation() + (GetActorForwardVector() * 50.f) + FVector(0.f, 0.f, 30.f);
 	const FRotator SpawnRotation = (PlayerPawn->GetActorLocation() - SpawnLocation).Rotation();
 
@@ -69,9 +71,25 @@ void ACylinderEnemyChar::FireAtPlayer()
 	GetWorld()->SpawnActor<ABaseProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
 }
 
+bool ACylinderEnemyChar::IsPlayerInRange() const
+{
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!PlayerPawn)
+	{
+		return false;
+	}
+
+	const float DistSq = FVector::DistSquared(GetActorLocation(), PlayerPawn->GetActorLocation());
+	return DistSq <= FMath::Square(MaxActivationRange);
+}
 void ACylinderEnemyChar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (!IsPlayerInRange())
+	{
+		return; // dormant - no facing, no movement, no shooting logic runs at all
+	}
 
 	if (bFacePlayer)
 	{

@@ -15,6 +15,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
+#include "DrawDebugHelpers.h"
 
 ACylinderPlayer::ACylinderPlayer()
 {
@@ -36,14 +37,14 @@ ACylinderPlayer::ACylinderPlayer()
 
     // -------------------------------------------------------------
     // Camera - attached directly to the capsule, no spring arm.
-    // Only the camera applies pawn control rotation (pitch + yaw);
-    // the capsule itself never rotates with the mouse, which keeps
-    // movement direction calculations simple and avoids any visual lag.
+    // bUsePawnControlRotation is OFF: we now drive pitch/yaw/roll manually
+    // every tick in UpdateCameraRotation(), so the wall-slide lean (roll)
+    // isn't silently overwritten by the engine's own control-rotation sync.
     // -------------------------------------------------------------
     FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
     FirstPersonCamera->SetupAttachment(RootComponent);
     FirstPersonCamera->SetRelativeLocation(FVector(0.f, 0.f, 74.f)); // approx eye height
-    FirstPersonCamera->bUsePawnControlRotation = true;
+    FirstPersonCamera->bUsePawnControlRotation = false;
 
     // -------------------------------------------------------------
     // Gun Child Actor Component - attached directly to the camera
@@ -104,33 +105,27 @@ void ACylinderPlayer::BeginPlay()
        CameraBaseRelativeLocation = FirstPersonCamera->GetRelativeLocation();
     }
 
-    // Cache the movement component's "normal" ground feel so EndSlide() can restore it exactly,
-    // even if these values are later tweaked in a Blueprint's class defaults.
+    // Explicitly set the gun actor's owner to this player character
+    if (IsValid(GunChildComponent))
+    {
+       GunBaseRelativeLocation = GunChildComponent->GetRelativeLocation();
+       GunBaseRelativeRotation = GunChildComponent->GetRelativeRotation();
+       if (AActor* ChildActor = GunChildComponent->GetChildActor())
+       {
+          ChildActor->SetOwner(this);
+       }
+    }
+
+    // Cache the movement component's "normal" ground/air feel so EndSlide()/wall-slide-exit
+    // can restore it exactly, even if these values are later tweaked in a Blueprint's class defaults.
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
        DefaultGroundFriction = MoveComp->GroundFriction;
        DefaultBrakingDecelerationWalking = MoveComp->BrakingDecelerationWalking;
+       DefaultBrakingFriction = MoveComp->BrakingFriction;
+       DefaultMaxAcceleration = MoveComp->MaxAcceleration;
+       DefaultGravityScale = MoveComp->GravityScale;
     }
-
-   
-   // Explicitly set the gun actor's owner to this player character
-   if (IsValid(GunChildComponent))
-   {
-      GunBaseRelativeLocation = GunChildComponent->GetRelativeLocation();
-      GunBaseRelativeRotation = GunChildComponent->GetRelativeRotation();
-      if (AActor* ChildActor = GunChildComponent->GetChildActor())
-      {
-         ChildActor->SetOwner(this);
-      }
-   }
-
-   if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-   {
-      DefaultGroundFriction = MoveComp->GroundFriction;
-      DefaultBrakingDecelerationWalking = MoveComp->BrakingDecelerationWalking;
-      DefaultBrakingFriction = MoveComp->BrakingFriction;
-      DefaultMaxAcceleration = MoveComp->MaxAcceleration;
-   }
 }
 
 void ACylinderPlayer::Tick(float DeltaTime)
@@ -139,6 +134,8 @@ void ACylinderPlayer::Tick(float DeltaTime)
 
     UpdateSlideVisuals(DeltaTime);
     UpdateCameraBob(DeltaTime);
+    UpdateWallSlide(DeltaTime);
+    UpdateCameraRotation(DeltaTime); // must run last - applies pitch/yaw/roll after everything else has decided its inputs
 }
 
 void ACylinderPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -289,6 +286,7 @@ void ACylinderPlayer::StartDash()
        DashCooldownDuration,
        false);
 }
+
 void ACylinderPlayer::ResetDashCooldown()
 {
     bCanDash = true;
@@ -325,7 +323,7 @@ void ACylinderPlayer::StartFire()
    if (ABaseGun* Gun = Cast<ABaseGun>(ChildActor))
    {
       GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, TEXT("StartFire: Calling Gun->StartFire()"));
-      
+
       Gun->StartFire();
    }
    else
@@ -346,6 +344,7 @@ void ACylinderPlayer::StopFire()
        Gun->StopFire();
     }
 }
+
 void ACylinderPlayer::Jump()
 {
    // If we are currently sliding, cancel the slide immediately on jump press
@@ -354,9 +353,17 @@ void ACylinderPlayer::Jump()
       EndSlide();
    }
 
+   // If wall-sliding, launch off the wall instead of a normal jump
+   if (bIsWallSliding)
+   {
+      WallJump();
+      return;
+   }
+
    // Call the parent character's standard jump logic
    Super::Jump();
 }
+
 void ACylinderPlayer::PlayShootCameraShake() const
 {
    if (ShootCameraShakeClass && Controller)
@@ -367,6 +374,7 @@ void ACylinderPlayer::PlayShootCameraShake() const
       }
    }
 }
+
 void ACylinderPlayer::UpdateCameraBob(float DeltaTime)
 {
     if (!FirstPersonCamera)
@@ -444,4 +452,108 @@ void ACylinderPlayer::UpdateSlideVisuals(float DeltaTime)
     {
        GunChildComponent->SetRelativeRotation(GunBaseRelativeRotation + CurrentGunSlideRotationOffset);
     }
+}
+
+bool ACylinderPlayer::DetectWall(FVector& OutWallNormal) const
+{
+    const FVector Start = GetActorLocation();
+
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(WallSlideTrace), false);
+    QueryParams.AddIgnoredActor(this);
+
+    static constexpr int32 NumDirections = 8;
+    for (int32 i = 0; i < NumDirections; ++i)
+    {
+       const float Angle = (360.f / NumDirections) * i;
+       const FVector Dir = FRotator(0.f, Angle, 0.f).RotateVector(FVector::ForwardVector);
+       const FVector End = Start + Dir * WallTraceDistance;
+
+       FHitResult Hit;
+       const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams);
+
+       if (bDrawDebugWallTrace)
+       {
+          DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, 0.f, 0, 1.f);
+       }
+
+       if (bHit)
+       {
+          OutWallNormal = Hit.Normal;
+          return true;
+       }
+    }
+    return false;
+}
+
+void ACylinderPlayer::UpdateWallSlide(float DeltaTime)
+{
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!MoveComp)
+    {
+       return;
+    }
+
+    if (WallJumpCooldownRemaining > 0.f)
+    {
+       WallJumpCooldownRemaining -= DeltaTime;
+    }
+
+    const bool bFalling = MoveComp->IsFalling();
+    const bool bMovingDown = GetVelocity().Z < 0.f;
+
+    FVector WallNormal;
+    const bool bWallDetected = bFalling && bMovingDown && WallJumpCooldownRemaining <= 0.f && DetectWall(WallNormal);
+
+    bIsWallSliding = bWallDetected;
+
+    if (bIsWallSliding)
+    {
+       CurrentWallNormal = WallNormal;
+       MoveComp->GravityScale = WallSlideGravityScale;
+    }
+    else
+    {
+       MoveComp->GravityScale = DefaultGravityScale;
+    }
+
+    // Lean the camera toward the wall - use camera yaw (not actor yaw), since the capsule
+    // never rotates with the mouse (bUseControllerRotationYaw is false on this pawn).
+    float TargetRoll = 0.f;
+    if (bIsWallSliding && Controller)
+    {
+       const FRotator YawRotation(0.f, Controller->GetControlRotation().Yaw, 0.f);
+       const FVector CameraRight = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+       const float Side = FVector::DotProduct(CurrentWallNormal, CameraRight);
+       TargetRoll = (Side > 0.f) ? WallSlideCameraRollDegrees : -WallSlideCameraRollDegrees;
+    }
+
+    CurrentCameraRollOffset = FMath::FInterpTo(CurrentCameraRollOffset, TargetRoll, DeltaTime, WallSlideCameraRollInterpSpeed);
+}
+
+void ACylinderPlayer::WallJump()
+{
+    FVector LaunchVelocity = CurrentWallNormal * WallJumpAwayStrength;
+    LaunchVelocity.Z = WallJumpUpStrength;
+
+    LaunchCharacter(LaunchVelocity, true, true);
+
+    bIsWallSliding = false;
+    WallJumpCooldownRemaining = WallJumpReattachCooldown;
+
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+       MoveComp->GravityScale = DefaultGravityScale;
+    }
+}
+
+void ACylinderPlayer::UpdateCameraRotation(float DeltaTime)
+{
+    if (!FirstPersonCamera || !Controller)
+    {
+       return;
+    }
+
+    FRotator DesiredRotation = Controller->GetControlRotation();
+    DesiredRotation.Roll = CurrentCameraRollOffset;
+    FirstPersonCamera->SetWorldRotation(DesiredRotation);
 }

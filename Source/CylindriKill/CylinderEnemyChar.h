@@ -53,6 +53,15 @@ protected:
 
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void StopNavMovement();
+
+
+	/** If the player is farther than this, the enemy goes fully dormant - no movement, no shooting, no facing. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float MaxActivationRange = 4000.f;
+
+	/** True if the player is currently within MaxActivationRange (cheap to check, cached once per tick). */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	bool IsPlayerInRange() const;
 private:
 	void RotateToFacePlayer(float DeltaTime);
 };

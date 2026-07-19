@@ -11,6 +11,7 @@ class UCameraComponent;
 class UChildActorComponent;
 class UInputMappingContext;
 class UInputAction;
+class UCameraShakeBase;
 
 /**
  * ACylinderPlayer
@@ -20,6 +21,7 @@ class UInputAction;
  * - Ultrakill-style movement: instant acceleration, zero slide on stop.
  * - Directional dash (ground + air) with cooldown.
  * - Procedural camera bob driven by real lateral velocity.
+ * - Wall slide: slowed fall + camera lean when airborne next to a wall, with a boosted wall jump.
  */
 UCLASS()
 class CYLINDRIKILL_API ACylinderPlayer : public ACharacter
@@ -31,10 +33,12 @@ public:
 
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Shake")
     TSubclassOf<UCameraShakeBase> ShootCameraShakeClass;
 
     void PlayShootCameraShake() const;
+
 protected:
     virtual void BeginPlay() override;
 
@@ -49,7 +53,7 @@ protected:
     /** Child actor component that holds and displays the equipped gun blueprint. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<UChildActorComponent> GunChildComponent;
-    
+
     FVector GunBaseRelativeLocation = FVector::ZeroVector;
     FRotator GunBaseRelativeRotation = FRotator::ZeroRotator;
 
@@ -112,25 +116,22 @@ protected:
     /** Cached raw 2D move input (X = right/left, Y = forward/back). Used to derive dash direction. */
     FVector2D LastMoveInput = FVector2D::ZeroVector;
 
+    // ------------------------------------------------------------------
+    // Slide (post-dash ground slide)
+    // ------------------------------------------------------------------
+
     /** How long the slide state (low friction + lowered camera + tilted gun) lasts after a dash. */
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-
     float SlideDuration = 0.75f;
 
-
     /** Ground friction used only while sliding - low, so the dash burst actually carries the player. */
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-
     float SlideGroundFriction = 0.1f;
 
-
     /** Braking deceleration used only while sliding - low, so speed bleeds off gradually, not instantly. */
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
+    float SlideBrakingDeceleration = 100.f;
 
-    float SlideBrakingDeceleration = 100.f; 
     /** Braking friction lowered during slide so standing-still slides actually carry. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
     float SlideBrakingFriction = 0.0f;
@@ -138,6 +139,7 @@ protected:
     /** Lower acceleration during slide so held WASD keys don't instantly yank/kill your momentum. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
     float SlideMaxAcceleration = 500.f;
+
     /** How far the camera drops (in uu) at the peak of the slide. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
     float SlideCameraDropAmount = 40.f;
@@ -163,13 +165,59 @@ protected:
     float DefaultBrakingDecelerationWalking = 0.f;
     float DefaultBrakingFriction = 0.f;
     float DefaultMaxAcceleration = 0.f;
+    float DefaultGravityScale = 1.6f;
 
     float CurrentSlideCameraOffset = 0.f;
     FRotator CurrentGunSlideRotationOffset = FRotator::ZeroRotator;
     void UpdateSlideVisuals(float DeltaTime);
 
     // ------------------------------------------------------------------
-    // Procedural Camera Bob
+    // Wall Slide
+    // ------------------------------------------------------------------
+
+    /** How far out (in uu) the radial wall-check traces reach from the capsule. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallTraceDistance = 60.f;
+
+    /** Gravity scale applied while attached to a wall - lower falls slower. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallSlideGravityScale = 0.3f;
+
+    /** How far (degrees) the camera rolls/leans while wall-sliding. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallSlideCameraRollDegrees = 15.f;
+
+    /** How quickly the camera roll interpolates in/out of the lean. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallSlideCameraRollInterpSpeed = 10.f;
+
+    /** Outward (away-from-wall) launch strength for a wall jump. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallJumpAwayStrength = 900.f;
+
+    /** Upward launch strength for a wall jump. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallJumpUpStrength = 700.f;
+
+    /** Prevents instantly re-attaching to the same wall right after a wall jump. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide")
+    float WallJumpReattachCooldown = 0.3f;
+
+    /** Draw the radial wall-detection traces for tuning. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide|Debug")
+    bool bDrawDebugWallTrace = false;
+
+    bool bIsWallSliding = false;
+    FVector CurrentWallNormal = FVector::ZeroVector;
+    float CurrentCameraRollOffset = 0.f;
+    float WallJumpCooldownRemaining = 0.f;
+
+    void UpdateWallSlide(float DeltaTime);
+    bool DetectWall(FVector& OutWallNormal) const;
+    void WallJump();
+
+    // ------------------------------------------------------------------
+    // Procedural Camera Bob & Rotation
     // ------------------------------------------------------------------
 
     /** How fast the bob cycle advances at full speed. */
@@ -190,6 +238,9 @@ protected:
 
     void UpdateCameraBob(float DeltaTime);
 
+    /** Manually drives camera pitch/yaw (from control rotation) + roll (from wall lean) every tick.
+     *  Needed because FirstPersonCamera->bUsePawnControlRotation is now false - see UpdateWallSlide. */
+    void UpdateCameraRotation(float DeltaTime);
 
     // JUMP
     virtual auto Jump() -> void override;
