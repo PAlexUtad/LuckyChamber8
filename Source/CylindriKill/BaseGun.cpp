@@ -214,6 +214,13 @@ void ABaseGun::AddAmmo()
 				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green,
 					FString::Printf(TEXT("Chamber %d reloaded!"), i));
 			}
+
+			//Switch to newly loaded chamber in case you don't currently have bullets
+			if (!ChamberLoaded[CurrentChamberIndex])
+			{
+				CurrentChamberIndex = i;
+			}
+			
 			return;
 		}
 	}
