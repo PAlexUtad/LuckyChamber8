@@ -81,7 +81,9 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> ParryAction;
-
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    TObjectPtr<UInputAction> ScrollAction;
+    
     // ------------------------------------------------------------------
     // Input Handlers
     // ------------------------------------------------------------------
@@ -90,7 +92,7 @@ protected:
     void Look(const FInputActionValue& Value);
     void StartParry();
     void StartDash();
-
+    void Scroll(const FInputActionValue& Value);
     /** Forwards the fire-pressed input down to whatever gun is currently equipped. */
     void StartFire();
 
@@ -206,7 +208,7 @@ protected:
     /** Draw the radial wall-detection traces for tuning. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|WallSlide|Debug")
     bool bDrawDebugWallTrace = false;
-
+    
     bool bIsWallSliding = false;
     FVector CurrentWallNormal = FVector::ZeroVector;
     float CurrentCameraRollOffset = 0.f;

@@ -29,6 +29,9 @@ public:
 	virtual void StartParry();
 	virtual void StopParry();
 
+	/** Called from player scroll input. ScrollValue is typically +1/-1 per wheel tick. Adds spin momentum to the cylinder. */
+	UFUNCTION(BlueprintCallable, Category = "Gun|Cylinder")
+	void AddCylinderScrollInput(float ScrollValue);
 protected:
 	/** Parry configuration */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parry")
@@ -61,6 +64,30 @@ protected:
 	FVector CurrentCylinderSlideLocation = FVector::ZeroVector;
 	FVector TargetCylinderSlideLocation = FVector::ZeroVector;
 	FVector CylinderBaseLoc = FVector::ZeroVector;
+
+	/** Cached resting rotation of the cylinder mesh, captured in BeginPlay - chamber rotation is added on top of this. */
+	FRotator CylinderBaseRotation = FRotator::ZeroRotator;
+
+	/** Number of chambers on the cylinder - each scroll tick advances by 360/NumChambers degrees. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Cylinder")
+	int32 NumCylinderChambers = 8;
+
+	/** How quickly the mesh rotates toward the new chamber's target angle (higher = snappier). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Cylinder")
+	float CylinderRotationInterpSpeed = 10.f;
+
+	/** Which local axis the cylinder spins around - Roll is correct if the mesh's forward axis points down the barrel. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Cylinder")
+	bool bSpinAroundRollAxis = true;
+
+	int32 CurrentChamberIndex = 0;              // which of the NumCylinderChambers positions we're resting at/moving to
+	float CurrentCylinderSpinDegrees = 0.f;     // smoothed current rotation angle
+	float TargetCylinderSpinDegrees = 0.f;      // exact target angle for CurrentChamberIndex (a multiple of the step size)
+
+	
+	/** Per-chamber loaded state, indexed the same way as CurrentChamberIndex. True = round loaded and ready to fire. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Cylinder")
+	TArray<bool> ChamberLoaded;
 	
 	void PerformParryTrace();
 	void ResetParryCooldown();

@@ -28,14 +28,16 @@ ABaseGun::ABaseGun()
 	BodyMesh->SetupAttachment(RootComponent);
 }
 
-// Called when the game starts or when spawned
 void ABaseGun::BeginPlay()
 {
 	Super::BeginPlay();
 	CylinderBaseLoc = CylinderMesh->GetRelativeLocation();
+	CylinderBaseRotation = CylinderMesh->GetRelativeRotation();
 	CurrentCylinderSlideLocation = CylinderBaseLoc;
 	TargetCylinderSlideLocation = CylinderBaseLoc;
-	CurrentAmmo = MaxAmmo;
+
+	ChamberLoaded.Init(true, NumCylinderChambers); // start fully loaded, one bool per chamber
+	CurrentAmmo = ChamberLoaded.Num();
 }
 
 // Called every frame
@@ -71,6 +73,26 @@ void ABaseGun::Tick(float DeltaTime)
 		CylinderMesh->SetRelativeLocation(CurrentCylinderSlideLocation);
 	}
 
+	// Scroll-driven cylinder rotation: each scroll tick snaps CurrentChamberIndex forward/back by
+	// one chamber, TargetCylinderSpinDegrees becomes an exact multiple of (360/NumCylinderChambers),
+	// and we smoothly interpolate the visual rotation toward that fixed step - a proper indexed
+	// revolver click rather than a freely coasting spin.
+	CurrentCylinderSpinDegrees = FMath::FInterpTo(CurrentCylinderSpinDegrees, TargetCylinderSpinDegrees, DeltaTime, CylinderRotationInterpSpeed);
+
+	if (CylinderMesh)
+	{
+		FRotator SpinOffset = FRotator::ZeroRotator;
+		if (bSpinAroundRollAxis)
+		{
+			SpinOffset.Roll = CurrentCylinderSpinDegrees;
+		}
+		else
+		{
+			SpinOffset.Yaw = CurrentCylinderSpinDegrees;
+		}
+		CylinderMesh->SetRelativeRotation(CylinderBaseRotation + SpinOffset);
+	}
+
 	if (bIsParrying)
 	{
 		// Check for incoming projectiles immediately during parry frame
@@ -100,7 +122,22 @@ void ABaseGun::StopParry()
 {
     // Optional early release logic if needed
 }
+void ABaseGun::AddCylinderScrollInput(float ScrollValue)
+{
+	if (NumCylinderChambers <= 0) return;
 
+	const float StepDegrees = 360.f / static_cast<float>(NumCylinderChambers); // 45° for 8 chambers
+
+	// One scroll tick = one chamber step, in whichever direction the wheel moved.
+	const int32 Direction = (ScrollValue > 0.f) ? 1 : (ScrollValue < 0.f ? -1 : 0);
+	if (Direction == 0) return;
+
+	CurrentChamberIndex = (CurrentChamberIndex + Direction + NumCylinderChambers) % NumCylinderChambers;
+
+	// Accumulate rather than wrap the *visual* target, so the interpolation always spins the
+	// short way forward/backward instead of snapping backward through 315° when wrapping past 0.
+	TargetCylinderSpinDegrees += Direction * StepDegrees;
+}
 void ABaseGun::PerformParryTrace()
 {
 	const APawn* OwningPawn = Cast<APawn>(GetOwner());
@@ -164,11 +201,23 @@ void ABaseGun::EndParry()
 
 void ABaseGun::AddAmmo()
 {
-	if (CurrentAmmo < 8)
+	for (int32 i = 0; i < ChamberLoaded.Num(); ++i)
 	{
-		CurrentAmmo++;
+		if (!ChamberLoaded[i])
+		{
+			ChamberLoaded[i] = true;
+			CurrentAmmo = FMath::Min(CurrentAmmo + 1, ChamberLoaded.Num());
+
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green,
+					FString::Printf(TEXT("Chamber %d reloaded!"), i));
+			}
+			return;
+		}
 	}
-	else
+
+	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange, TEXT("Full Ammo! Making Bullets Stronger"));
 	}
@@ -206,11 +255,12 @@ void ABaseGun::Fire()
 		return;
 	}
 
-	if (CurrentAmmo <= 0)
+	if (!ChamberLoaded.IsValidIndex(CurrentChamberIndex) || !ChamberLoaded[CurrentChamberIndex])
 	{
 		if (GEngine)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange, TEXT("Click. Out of ammo."));
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange,
+				FString::Printf(TEXT("Click. Chamber %d is empty."), CurrentChamberIndex));
 		}
 		return;
 	}
@@ -277,7 +327,10 @@ void ABaseGun::Fire()
 		}
 	}
 
-	--CurrentAmmo;
+	ChamberLoaded[CurrentChamberIndex] = false;
+	CurrentAmmo = FMath::Max(CurrentAmmo - 1, 0);
+	// Auto-advance to the next chamber after firing, same stepped rotation as manual scroll input.
+	AddCylinderScrollInput(1.f);
 	// Inside Fire() when the shot goes through:
 	TargetRecoilLocation.X += RecoilKickBack;
 	TargetRecoilRotation.Pitch += RecoilKickPitch;

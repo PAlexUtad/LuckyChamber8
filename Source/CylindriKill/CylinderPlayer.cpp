@@ -175,6 +175,10 @@ void ACylinderPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
        {
           EIC->BindAction(ParryAction, ETriggerEvent::Started, this, &ACylinderPlayer::StartParry);
        }
+       if (ScrollAction)
+       {
+          EIC->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &ACylinderPlayer::Scroll);
+       }
     }
 }
 
@@ -208,7 +212,16 @@ void ACylinderPlayer::Look(const FInputActionValue& Value)
        AddControllerPitchInput(LookAxis.Y);
     }
 }
-
+void ACylinderPlayer::Scroll(const FInputActionValue& Value)
+{
+   if (GunChildComponent)
+   {
+      if (ABaseGun* Gun = Cast<ABaseGun>(GunChildComponent->GetChildActor()))
+      {
+         Gun->AddCylinderScrollInput(Value.Get<float>());
+      }
+   }
+}
 void ACylinderPlayer::StartParry()
 {
    if (GunChildComponent)
