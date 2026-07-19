@@ -32,13 +32,23 @@ ABaseGun::ABaseGun()
 void ABaseGun::BeginPlay()
 {
 	Super::BeginPlay();
-	CylinderBaseLoc = CylinderMesh->GetRelativeLocation();
-	CylinderBaseRotation = CylinderMesh->GetRelativeRotation();
+    
+	// Cache locations/rotations
+	CylinderBaseLoc = CylinderMesh ? CylinderMesh->GetRelativeLocation() : FVector::ZeroVector;
+	CylinderBaseRotation = CylinderMesh ? CylinderMesh->GetRelativeRotation() : FRotator::ZeroRotator;
 	CurrentCylinderSlideLocation = CylinderBaseLoc;
 	TargetCylinderSlideLocation = CylinderBaseLoc;
 
-	ChamberLoaded.Init(true, NumCylinderChambers); // start fully loaded, one bool per chamber
-	CurrentAmmo = ChamberLoaded.Num();
+	// Initialize ChamberTiers instead of the old bool array
+	ChamberTiers.Init(0, NumCylinderChambers); 
+    
+	// Start with a full cylinder (Tier 1 bullets)
+	for(int32 i = 0; i < ChamberTiers.Num(); i++)
+	{
+		ChamberTiers[i] = 1;
+	}
+    
+	CurrentAmmo = NumCylinderChambers;
 }
 
 // Called every frame
@@ -202,33 +212,37 @@ void ABaseGun::EndParry()
 
 void ABaseGun::AddAmmo()
 {
-	for (int32 i = 0; i < ChamberLoaded.Num(); ++i)
+	// 1. First pass: Look for empty chambers (Tier 0) and fill them with Tier 1
+	for (int32 i = 0; i < ChamberTiers.Num(); ++i)
 	{
-		if (!ChamberLoaded[i])
+		if (ChamberTiers[i] == 0)
 		{
-			ChamberLoaded[i] = true;
-			CurrentAmmo = FMath::Min(CurrentAmmo + 1, ChamberLoaded.Num());
-
-			if (GEngine)
-			{
-				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green,
-					FString::Printf(TEXT("Chamber %d reloaded!"), i));
-			}
-
-			//Switch to newly loaded chamber in case you don't currently have bullets
-			if (!ChamberLoaded[CurrentChamberIndex])
-			{
-				CurrentChamberIndex = i;
-			}
-			
-			return;
+			ChamberTiers[i] = 1;
+			CurrentAmmo = FMath::Min(CurrentAmmo + 1, ChamberTiers.Num());
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, TEXT("Chamber loaded with Tier 1!"));
+			return; 
 		}
 	}
 
-	if (GEngine)
+	// 2. Smooth Upgrade Pass
+	// We want to find the lowest tier that is currently less than 4, 
+	// and upgrade only the first instance of it.
+	for (int32 TargetTier = 1; TargetTier < 4; ++TargetTier)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange, TEXT("Full Ammo! Making Bullets Stronger"));
+		for (int32 i = 0; i < ChamberTiers.Num(); ++i)
+		{
+			if (ChamberTiers[i] == TargetTier)
+			{
+				ChamberTiers[i]++; // Upgrade this one
+				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, 
+					FString::Printf(TEXT("Upgraded Chamber %d to Tier %d"), i, ChamberTiers[i]));
+				return; // Exit after one upgrade to keep it balanced
+			}
+		}
 	}
+
+	// 3. If we got here, all bullets are Tier 4
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange, TEXT("All chambers at Max Tier!"));
 }
 
 void ABaseGun::ResetParryCooldown()
@@ -252,100 +266,81 @@ void ABaseGun::StopFire()
 
 void ABaseGun::Fire()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("ABaseGun FIRE!"));
-	// -------------------------------------------------------------
-	// Cooldown + ammo gates - stops a semi-auto weapon being spammed
-	// faster than FireRate, and stops firing once the mag is empty.
-	// -------------------------------------------------------------
-	if (!bCanFire)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Cannot Fire"));
-		return;
-	}
+    GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("ABaseGun FIRE!"));
 
-	if (!ChamberLoaded.IsValidIndex(CurrentChamberIndex) || !ChamberLoaded[CurrentChamberIndex])
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange,
-				FString::Printf(TEXT("Click. Chamber %d is empty."), CurrentChamberIndex));
-		}
-		return;
-	}
-	
-	// -------------------------------------------------------------
-	// Find the camera to aim from. The gun is a child actor attached
-	// under the player's camera, so we look the camera up via the
-	// owning pawn rather than depending on any specific player class.
-	// -------------------------------------------------------------
-	const APawn* OwningPawn = Cast<APawn>(GetOwner());
-	if (IsValid(OwningPawn))
-	{
-		Cast<ACylinderPlayer>(OwningPawn)->PlayShootCameraShake();
-	}
-	const UCameraComponent* AimCamera = OwningPawn ? OwningPawn->FindComponentByClass<UCameraComponent>() : nullptr;
-	if (!AimCamera)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("No camera"));
-		return;
-	}
+    // 1. Cooldown gate
+    if (!bCanFire) return;
 
-	const FVector TraceStart = AimCamera->GetComponentLocation();
-	const FVector TraceEnd = TraceStart + (AimCamera->GetForwardVector() * TraceRange);
+    // 2. Ammo gate
+    if (!ChamberTiers.IsValidIndex(CurrentChamberIndex) || ChamberTiers[CurrentChamberIndex] <= 0)
+    {
+       if (GEngine)
+       {
+          GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange,
+             FString::Printf(TEXT("Click. Chamber %d is empty."), CurrentChamberIndex));
+       }
+       return;
+    }
 
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(GunFire), /*bTraceComplex=*/true);
-	QueryParams.AddIgnoredActor(this);
-	if (OwningPawn)
-	{
-		QueryParams.AddIgnoredActor(OwningPawn);
-	}
+    // 3. Determine damage and SHOW TIER
+    int32 ShotTier = ChamberTiers[CurrentChamberIndex];
+    
+    // Add this debug message to show the tier
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::White, 
+            FString::Printf(TEXT("Firing Tier %d Bullet!"), ShotTier));
+    }
 
-	FHitResult HitResult;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams);
+	// TODO remove that and make it not hardcoded
+    float DamageMultiplier = FMath::Pow(2.5f, (float)(ShotTier - 1));
+    float FinalDamage = BaseBulletDamage * DamageMultiplier;
 
+    // 4. Trace logic
+    const APawn* OwningPawn = Cast<APawn>(GetOwner());
+    if (IsValid(OwningPawn))
+    {
+       Cast<ACylinderPlayer>(OwningPawn)->PlayShootCameraShake();
+    }
+    
+    const UCameraComponent* AimCamera = OwningPawn ? OwningPawn->FindComponentByClass<UCameraComponent>() : nullptr;
+    if (!AimCamera) return;
+
+    const FVector TraceStart = AimCamera->GetComponentLocation();
+    const FVector TraceEnd = TraceStart + (AimCamera->GetForwardVector() * TraceRange);
+
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(GunFire), true);
+    QueryParams.AddIgnoredActor(this);
+    if (OwningPawn) QueryParams.AddIgnoredActor(OwningPawn);
+
+    FHitResult HitResult;
+    const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams);
 	if (bDrawDebugTrace)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("bDrawDebugTrace!"));
-		if (bHit)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("bHit!"));
-			DrawDebugLine(GetWorld(), TraceStart, HitResult.ImpactPoint, FColor::Yellow, false, 1.5f, 0, 1.f);
-			DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 8.f, 12, FColor::Red, false, 1.5f);
-		}
-		else
-		{
-			DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Blue, false, 1.5f, 0, 1.f);
-		}
+		DrawDebugLine(GetWorld(), TraceStart, bHit ? HitResult.ImpactPoint : TraceEnd, 
+					  bHit ? FColor::Red : FColor::Green, false, 1.0f, 0, 1.0f);
 	}
+    // 5. Apply Damage
+    if (bHit && HitResult.GetActor())
+    {
+       if (UHealthComponent* TargetHealth = UHealthComponent::FindHealthComponent(HitResult.GetActor()))
+       {
+          AController* InstigatorController = OwningPawn ? OwningPawn->GetController() : nullptr;
+          TargetHealth->ApplyDamage(FinalDamage, this, InstigatorController);
+       }
+    }
 
-	if (bHit && GEngine)
-	{
-		AActor* HitActor = HitResult.GetActor();
-		//GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Green,
-			//FString::Printf(TEXT("Hit: %s"), *GetNameSafe(HitActor)));
+    // 6. Consume bullet
+    ChamberTiers[CurrentChamberIndex] = 0;
+    CurrentAmmo = FMath::Max(CurrentAmmo - 1, 0);
+    
+    // 7. Visuals and Cooldown
+    AddCylinderScrollInput(1.f);
+    TargetRecoilLocation.X += RecoilKickBack;
+    TargetRecoilRotation.Pitch += RecoilKickPitch;
 
-		// Directly check if the hit actor is our enemy character and delete it instantly
-		if (HitActor)
-		{
-			if (UHealthComponent* TargetHealth = UHealthComponent::FindHealthComponent(HitActor))
-			{
-				AController* InstigatorController = OwningPawn ? OwningPawn->GetController() : nullptr;
-				TargetHealth->ApplyDamage(BulletDamage, this, InstigatorController);
-			}
-		}
-	}
-
-	ChamberLoaded[CurrentChamberIndex] = false;
-	CurrentAmmo = FMath::Max(CurrentAmmo - 1, 0);
-	// Auto-advance to the next chamber after firing, same stepped rotation as manual scroll input.
-	AddCylinderScrollInput(1.f);
-	// Inside Fire() when the shot goes through:
-	TargetRecoilLocation.X += RecoilKickBack;
-	TargetRecoilRotation.Pitch += RecoilKickPitch;
-
-	// Gate the next shot until FireRate seconds have passed.
-	bCanFire = false;
-	GetWorldTimerManager().SetTimer(FireCooldownTimerHandle, this, &ABaseGun::ResetFireCooldown, FireRate, false);
+    bCanFire = false;
+    GetWorldTimerManager().SetTimer(FireCooldownTimerHandle, this, &ABaseGun::ResetFireCooldown, FireRate, false);
 }
 
 void ABaseGun::ResetFireCooldown()

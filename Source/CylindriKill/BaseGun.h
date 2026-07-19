@@ -87,9 +87,11 @@ protected:
 	/** Damage applied to anything with a UHealthComponent that the hitscan trace connects with. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Fire")
 	float BulletDamage = 100.f;
-	/** Per-chamber loaded state, indexed the same way as CurrentChamberIndex. True = round loaded and ready to fire. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Cylinder")
-	TArray<bool> ChamberLoaded;
+	UPROPERTY(EditAnywhere, Category = "Gun")
+	float BaseBulletDamage = 10.f;
+
+	UPROPERTY()
+	TArray<int32> ChamberTiers;
 	
 	void PerformParryTrace();
 	void ResetParryCooldown();
