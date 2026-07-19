@@ -246,4 +246,12 @@ protected:
 
     // JUMP
     virtual auto Jump() -> void override;
+
+
+    // Health Component
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    TObjectPtr<class UHealthComponent> HealthComponent;
+
+    UFUNCTION()
+    void HandleDeath(AActor* DamageCauser);
 };

@@ -3,6 +3,7 @@
 #include "CylinderEnemyChar.h"
 
 #include "BaseProjectile.h"
+#include "HealthComponent.h"
 #include "TimerManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -39,6 +40,8 @@ ACylinderEnemyChar::ACylinderEnemyChar()
 	SpriteComponent->SetupAttachment(RootComponent);
 	SpriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	HealthComponent->MaxHealth = 1.f; // preserves the old one-shot-kill feel; raise on a per-enemy Blueprint for tankier types
 
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -47,6 +50,11 @@ ACylinderEnemyChar::ACylinderEnemyChar()
 void ACylinderEnemyChar::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (HealthComponent)
+	{
+		HealthComponent->OnDeath.AddDynamic(this, &ACylinderEnemyChar::HandleDeath);
+	}
 
 	if (GetWorld() && ProjectileClass)
 	{
@@ -120,20 +128,22 @@ void ACylinderEnemyChar::RotateToFacePlayer(float DeltaTime)
 float ACylinderEnemyChar::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	
-	Health -= ActualDamage;
-	if (Health <= 0.f)
+
+	if (HealthComponent)
 	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Enemy Character Died!"));
-		}
-		Destroy();
+		HealthComponent->ApplyDamage(ActualDamage > 0.f ? ActualDamage : DamageAmount, DamageCauser, EventInstigator);
 	}
 
 	return ActualDamage;
 }
-
+void ACylinderEnemyChar::HandleDeath(AActor* DamageCauser)
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Enemy Character Died!"));
+	}
+	Destroy();
+}
 void ACylinderEnemyChar::MoveToLocationViaNav(const FVector& TargetLocation, float AcceptanceRadius)
 {
 	if (AAIController* AIController = Cast<AAIController>(GetController()))

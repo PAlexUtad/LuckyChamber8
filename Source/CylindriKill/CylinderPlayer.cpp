@@ -16,10 +16,11 @@
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
 #include "DrawDebugHelpers.h"
+#include "HealthComponent.h"
 
 ACylinderPlayer::ACylinderPlayer()
 {
-    PrimaryActorTick.bCanEverTick = true;
+   PrimaryActorTick.bCanEverTick = true;
 
     // -------------------------------------------------------------
     // No skeletal mesh / arms - keep the pawn lightweight. The mesh
@@ -56,6 +57,9 @@ ACylinderPlayer::ACylinderPlayer()
     bUseControllerRotationPitch = false;
     bUseControllerRotationRoll = false;
 
+   // Health Component Setup
+   HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+   HealthComponent->MaxHealth = 100.f; // player survives multiple hits, unlike the 1-hit enemies
     // -------------------------------------------------------------
     // Ultrakill-style movement tuning:
     // High acceleration + high friction + extreme braking deceleration
@@ -98,7 +102,10 @@ void ACylinderPlayer::BeginPlay()
           }
        }
     }
-
+   if (HealthComponent)
+   {
+      HealthComponent->OnDeath.AddDynamic(this, &ACylinderPlayer::HandleDeath);
+   }
     // Cache the camera's resting position so bobbing offsets are always relative to it.
     if (FirstPersonCamera)
     {
@@ -569,4 +576,14 @@ void ACylinderPlayer::UpdateCameraRotation(float DeltaTime)
     FRotator DesiredRotation = Controller->GetControlRotation();
     DesiredRotation.Roll = CurrentCameraRollOffset;
     FirstPersonCamera->SetWorldRotation(DesiredRotation);
+}
+
+
+void ACylinderPlayer::HandleDeath(AActor* DamageCauser)
+{
+   if (GEngine)
+   {
+      GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Player Died!"));
+   }
+   Destroy(); // swap for a respawn/game-over flow later - the death *event* is already fully decoupled from what caused it
 }

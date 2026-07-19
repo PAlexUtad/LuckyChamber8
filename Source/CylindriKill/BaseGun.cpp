@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "BaseProjectile.h"
 #include "CylinderPlayer.h"
+#include "HealthComponent.h"
 
 // Sets default values
 ABaseGun::ABaseGun()
@@ -319,10 +320,10 @@ void ABaseGun::Fire()
 		// Directly check if the hit actor is our enemy character and delete it instantly
 		if (HitActor)
 		{
-			// If you named your character class ACylinderEnemyChar, cast and destroy:
-			if (ACylinderEnemyChar* Enemy = Cast<ACylinderEnemyChar>(HitActor))
+			if (UHealthComponent* TargetHealth = UHealthComponent::FindHealthComponent(HitActor))
 			{
-				Enemy->Destroy();
+				AController* InstigatorController = OwningPawn ? OwningPawn->GetController() : nullptr;
+				TargetHealth->ApplyDamage(BulletDamage, this, InstigatorController);
 			}
 		}
 	}

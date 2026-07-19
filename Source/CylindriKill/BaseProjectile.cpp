@@ -4,6 +4,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "CylinderPlayer.h"
 #include "CylinderEnemyChar.h"
+#include "HealthComponent.h"
 
 ABaseProjectile::ABaseProjectile()
 {
@@ -35,24 +36,31 @@ void ABaseProjectile::BeginPlay()
 }
 
 void ABaseProjectile::OnSphereOverlap(
-	UPrimitiveComponent* OverlappedComponent, 
-	AActor* OtherActor, 
-	UPrimitiveComponent* OtherComp, 
-	int32 OtherBodyIndex, 
-	bool bFromSweep, 
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
 	const FHitResult& SweepResult
 )
 {
-	UE_LOG(LogTemp, Warning, TEXT("Projectile Overlapped with"));
 	if (!OtherActor || OtherActor == this) return;
-	UE_LOG(LogTemp, Warning, TEXT("Projectile Overlapped with: %s"), *OtherActor->GetName());
-	if (ACylinderPlayer* Player = Cast<ACylinderPlayer>(OtherActor))
+
+	// Enemy projectiles shouldn't collide with or damage other enemies - this is a friendly-fire
+	// rule, a separate concern from "can this thing be damaged," so it intentionally still checks
+	// the concrete enemy class rather than going through UHealthComponent.
+	if (OtherActor->IsA(ACylinderEnemyChar::StaticClass()))
 	{
-		Player->Destroy();
-		Destroy();
+		return; // pass straight through, no damage, no destroy
 	}
-	else if (!OtherActor->IsA(ACylinderEnemyChar::StaticClass()))
+
+	if (UHealthComponent* TargetHealth = UHealthComponent::FindHealthComponent(OtherActor))
 	{
+		TargetHealth->ApplyDamage(ProjectileDamage, GetOwner(), nullptr);
 		Destroy();
+		return;
 	}
+
+	// Hit something with no health component at all (world geometry, etc.) - just disappear.
+	Destroy();
 }

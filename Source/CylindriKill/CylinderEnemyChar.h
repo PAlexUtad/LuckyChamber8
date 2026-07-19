@@ -24,9 +24,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPaperSpriteComponent> SpriteComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	float Health = 1.0f;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UHealthComponent> HealthComponent;
 
+	UFUNCTION()
+	void HandleDeath(AActor* DamageCauser);
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
 	bool bFacePlayer = true;
 	

@@ -30,7 +30,11 @@ protected:
 	/** Handles movement velocity and physics */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
-
+	
+	/** Damage applied to anything with a UHealthComponent that this projectile overlaps. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float ProjectileDamage = 25.f;
+	
 	UFUNCTION()
 	void OnSphereOverlap(
 		UPrimitiveComponent* OverlappedComponent, 

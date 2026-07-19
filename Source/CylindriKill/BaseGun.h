@@ -84,7 +84,9 @@ protected:
 	float CurrentCylinderSpinDegrees = 0.f;     // smoothed current rotation angle
 	float TargetCylinderSpinDegrees = 0.f;      // exact target angle for CurrentChamberIndex (a multiple of the step size)
 
-	
+	/** Damage applied to anything with a UHealthComponent that the hitscan trace connects with. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Fire")
+	float BulletDamage = 100.f;
 	/** Per-chamber loaded state, indexed the same way as CurrentChamberIndex. True = round loaded and ready to fire. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Cylinder")
 	TArray<bool> ChamberLoaded;
