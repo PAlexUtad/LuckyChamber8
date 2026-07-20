@@ -58,7 +58,6 @@ APlayerCharacter::APlayerCharacter()
     bUseControllerRotationRoll = false;
 
    // Health Component Setup
-   HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
    HealthComponent->MaxHealth = 100.f; // player survives multiple hits, unlike the 1-hit enemies
     // -------------------------------------------------------------
     // Ultrakill-style movement tuning:

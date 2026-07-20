@@ -1,34 +1,59 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+// 
+// BaseCharacter.cpp
+// 
+// Implementation of the 'BaseCharacter' class. 
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
 
 #include "BaseCharacter.h"
 
-// Sets default values
+#include "Component/HealthComponent.h"
+#include "Engine/Engine.h"
+#include "PaperSpriteComponent.h"
+
 ABaseCharacter::ABaseCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	
+	SpriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteComponent"));
+	SpriteComponent->SetupAttachment(RootComponent);
+	SpriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	HealthComponent->MaxHealth = 1.f;
 }
 
-// Called when the game starts or when spawned
+// ------------------------------------------------------------------
+// Overridden Methods
+// ------------------------------------------------------------------
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	if (HealthComponent)
+	{
+		HealthComponent->OnDeath.AddDynamic(this, &ABaseCharacter::Die);
+	}
 }
 
-// Called every frame
-void ABaseCharacter::Tick(float DeltaTime)
+void ABaseCharacter::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
-// Called to bind functionality to input
-void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+// ------------------------------------------------------------------
+// Internal Methods
+// ------------------------------------------------------------------
+void ABaseCharacter::Spawn()
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
+	
 }
 
+void ABaseCharacter::Die(AActor* Aggressor)
+{
+	// TODO: Take death animation into account with a delay before destroying the character.
+	Destroy();
+}

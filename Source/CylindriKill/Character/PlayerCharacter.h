@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CylindriKill/BaseCharacter.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "PlayerCharacter.generated.h"
@@ -24,15 +25,18 @@ class UCameraShakeBase;
  * - Wall slide: slowed fall + camera lean when airborne next to a wall, with a boosted wall jump.
  */
 UCLASS()
-class CYLINDRIKILL_API APlayerCharacter : public ACharacter
+class CYLINDRIKILL_API APlayerCharacter : public ABaseCharacter
 {
     GENERATED_BODY()
 
 public:
+    
     APlayerCharacter();
 
     virtual void Tick(float DeltaTime) override;
-    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+    
+    // Called to bind functionality to input
+    virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Shake")
     TSubclassOf<UCameraShakeBase> ShootCameraShakeClass;
@@ -246,11 +250,6 @@ protected:
 
     // JUMP
     virtual auto Jump() -> void override;
-
-
-    // Health Component
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-    TObjectPtr<class UHealthComponent> HealthComponent;
 
     UFUNCTION()
     void HandleDeath(AActor* DamageCauser);

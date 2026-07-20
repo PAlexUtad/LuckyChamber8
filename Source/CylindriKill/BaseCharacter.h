@@ -1,4 +1,12 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// 
+// BaseCharacter.h
+// 
+// Parent class for all characters used in the game. 
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
 
 #pragma once
 
@@ -6,24 +14,41 @@
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
+class UPaperSpriteComponent;
+class UHealthComponent;
+
 UCLASS()
 class CYLINDRIKILL_API ABaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-public:
-	// Sets default values for this character's properties
-	ABaseCharacter();
-
 protected:
-	// Called when the game starts or when spawned
+	
+	// ------------------------------------------------------------------
+	// Blueprint Variables
+	// ------------------------------------------------------------------
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHealthComponent> HealthComponent;
+	
+	// TODO: Remove this field once a default mesh has been implemented.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPaperSpriteComponent> SpriteComponent;
+	
+public:
+
+	ABaseCharacter();
+	
+	// ------------------------------------------------------------------
+	// Overridden Methods
+	// ------------------------------------------------------------------
 	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	virtual void Tick(const float) override;
+	
+protected:
+	
+	// ------------------------------------------------------------------
+	// Blueprintable Methods
+	// ------------------------------------------------------------------
+	UFUNCTION() virtual void Spawn();
+	UFUNCTION() virtual void Die(AActor* Aggressor);
 };
