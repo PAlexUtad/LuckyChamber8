@@ -17,6 +17,7 @@
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
 #include "TimerManager.h"
+#include "CylindriKill/Ability/DashAbility.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -83,6 +84,11 @@ APlayerCharacter::APlayerCharacter()
     MoveComp->GravityScale = 1.6f;                    // snappier arcs, less floaty
 
     MoveComp->NavAgentProps.bCanCrouch = false;
+   
+   SlideCameraDropAmount     = 40.f;
+   SlideCameraInterpSpeed    = 10.f;
+   SlideWeaponInterpSpeed    = 10.f;
+   SlideWeaponPitchDegrees   = -65.f;
 }
 
 void APlayerCharacter::BeginPlay()
@@ -121,17 +127,6 @@ void APlayerCharacter::BeginPlay()
           ChildActor->SetOwner(this);
        }
     }
-
-    // Cache the movement component's "normal" ground/air feel so EndSlide()/wall-slide-exit
-    // can restore it exactly, even if these values are later tweaked in a Blueprint's class defaults.
-    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-    {
-       DefaultGroundFriction = MoveComp->GroundFriction;
-       DefaultBrakingDecelerationWalking = MoveComp->BrakingDecelerationWalking;
-       DefaultBrakingFriction = MoveComp->BrakingFriction;
-       DefaultMaxAcceleration = MoveComp->MaxAcceleration;
-       DefaultGravityScale = MoveComp->GravityScale;
-    }
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -169,7 +164,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
        if (DashAction)
        {
-          EIC->BindAction(DashAction, ETriggerEvent::Started, this, &APlayerCharacter::StartDash);
+          EIC->BindAction(DashAction, ETriggerEvent::Started, this, &APlayerCharacter::TriggerAbility,
+             TSubclassOf<UBaseAbility>(UDashAbility::StaticClass()));
        }
 
        if (FireAction)
@@ -177,10 +173,12 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
           EIC->BindAction(FireAction, ETriggerEvent::Started, this, &APlayerCharacter::StartFire);
           EIC->BindAction(FireAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopFire);
        }
+       
        if (ParryAction)
        {
           EIC->BindAction(ParryAction, ETriggerEvent::Started, this, &APlayerCharacter::StartParry);
        }
+       
        if (ScrollAction)
        {
           EIC->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Scroll);
@@ -191,7 +189,6 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
     const FVector2D InputVector = Value.Get<FVector2D>();
-    LastMoveInput = InputVector; // cached for dash direction; becomes (0,0) on the Completed event
 
     if (Controller)
     {
@@ -239,91 +236,6 @@ void APlayerCharacter::StartParry()
    }
 }
 
-void APlayerCharacter::StartDash()
-{
-    if (!bCanDash)
-    {
-       return;
-    }
-
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!MoveComp)
-    {
-       return;
-    }
-
-    // Resolve direction: WASD input direction if pressed, otherwise look direction (camera forward).
-    const float ControlYaw = Controller ? Controller->GetControlRotation().Yaw : GetActorRotation().Yaw;
-    const FRotator YawRotation(0.f, ControlYaw, 0.f);
-    const FVector Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-    const FVector Right = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-    FVector SlideDirection;
-    if (!LastMoveInput.IsNearlyZero())
-    {
-       // Direction of movement based on keys held
-       SlideDirection = (Forward * LastMoveInput.Y + Right * LastMoveInput.X).GetSafeNormal();
-    }
-    else
-    {
-       // Direction of the camera/view if standing still
-       SlideDirection = Forward;
-    }
-    SlideDirection.Z = 0.f;
-    SlideDirection.Normalize();
-
-    // Apply an even stronger burst if you want it faster/further out of the gate
-    const FVector LaunchVelocity(
-       SlideDirection.X * DashImpulseStrength,
-       SlideDirection.Y * DashImpulseStrength,
-       MoveComp->Velocity.Z + 200.f); // slight upward pop for flow
-
-    LaunchCharacter(LaunchVelocity, true, false);
-
-    // Loosen all movement gates so the physics burst isn't immediately murdered
-    if (MoveComp->IsMovingOnGround())
-    {
-       MoveComp->GroundFriction = SlideGroundFriction;
-       MoveComp->BrakingDecelerationWalking = SlideBrakingDeceleration;
-       MoveComp->BrakingFriction = SlideBrakingFriction;
-       MoveComp->MaxAcceleration = SlideMaxAcceleration;
-    }
-
-    bIsSliding = true;
-    GetWorldTimerManager().SetTimer(
-       SlideTimerHandle,
-       this,
-       &APlayerCharacter::EndSlide,
-       SlideDuration,
-       false);
-
-    bCanDash = false;
-    GetWorldTimerManager().SetTimer(
-       DashCooldownTimerHandle,
-       this,
-       &APlayerCharacter::ResetDashCooldown,
-       DashCooldownDuration,
-       false);
-}
-
-void APlayerCharacter::ResetDashCooldown()
-{
-    bCanDash = true;
-}
-
-void APlayerCharacter::EndSlide()
-{
-   bIsSliding = false;
-
-   if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-   {
-      MoveComp->GroundFriction = DefaultGroundFriction;
-      MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
-      MoveComp->BrakingFriction = DefaultBrakingFriction;
-      MoveComp->MaxAcceleration = DefaultMaxAcceleration;
-   }
-}
-
 void APlayerCharacter::StartFire()
 {
    if (!GunChildComponent)
@@ -366,13 +278,7 @@ void APlayerCharacter::StopFire()
 
 void APlayerCharacter::Jump()
 {
-   // If we are currently sliding, cancel the slide immediately on jump press
-   if (bIsSliding)
-   {
-      EndSlide();
-   }
-
-   // If wall-sliding, launch off the wall instead of a normal jump
+   // TODO: If we are currently sliding, cancel the slide immediately on jump press
    if (bIsWallSliding)
    {
       WallJump();
@@ -414,6 +320,7 @@ void APlayerCharacter::UpdateCameraBob(float DeltaTime)
 
     // While sliding, the smooth camera drop (handled in UpdateSlideVisuals) takes over -
     // footstep bob would fight it and look jittery on top of a slide.
+   const bool bIsSliding = FindAbility(UDashAbility::StaticClass())->IsActive();
     const bool bShouldBob = SpeedRatio > KINDA_SMALL_NUMBER && GetCharacterMovement()->IsMovingOnGround() && !bIsSliding;
     if (bShouldBob)
     {
@@ -446,31 +353,6 @@ void APlayerCharacter::UpdateCameraBob(float DeltaTime)
       // Push the gun opposite to the camera bob offset, scaled down slightly so it feels heavy
       GunChildComponent->SetRelativeLocation(GunBaseRelativeLocation - (CurrentBobOffset * 0.75f));
    }
-}
-
-void APlayerCharacter::UpdateSlideVisuals(float DeltaTime)
-{
-    // -------------------------------------------------------------
-    // Camera: smoothly lower while sliding (like "The Finals"), smoothly
-    // rise back to normal once the slide ends. The actual displacement is
-    // applied in UpdateCameraBob so it composes cleanly with footstep bob.
-    // -------------------------------------------------------------
-    const float TargetCameraSlideOffset = bIsSliding ? -SlideCameraDropAmount : 0.f;
-    CurrentSlideCameraOffset = FMath::FInterpTo(
-       CurrentSlideCameraOffset, TargetCameraSlideOffset, DeltaTime, SlideCameraInterpSpeed);
-
-    // -------------------------------------------------------------
-    // Gun: pitch up towards the sky while sliding, settle back down to its
-    // normal aiming rotation once the slide ends.
-    // -------------------------------------------------------------
-    const FRotator TargetGunSlideRotation = bIsSliding ? FRotator(SlideGunPitchDegrees, 0.f, 0.f) : FRotator::ZeroRotator;
-    CurrentGunSlideRotationOffset = FMath::RInterpTo(
-       CurrentGunSlideRotationOffset, TargetGunSlideRotation, DeltaTime, SlideGunInterpSpeed);
-
-    if (IsValid(GunChildComponent))
-    {
-       GunChildComponent->SetRelativeRotation(GunBaseRelativeRotation + CurrentGunSlideRotationOffset);
-    }
 }
 
 bool APlayerCharacter::DetectWall(FVector& OutWallNormal) const
@@ -532,7 +414,7 @@ void APlayerCharacter::UpdateWallSlide(float DeltaTime)
     }
     else
     {
-       MoveComp->GravityScale = DefaultGravityScale;
+       MoveComp->GravityScale = 1.6f;
     }
 
     // Lean the camera toward the wall - use camera yaw (not actor yaw), since the capsule
@@ -561,7 +443,7 @@ void APlayerCharacter::WallJump()
 
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
-       MoveComp->GravityScale = DefaultGravityScale;
+       MoveComp->GravityScale = 1.6f;
     }
 }
 
@@ -577,6 +459,31 @@ void APlayerCharacter::UpdateCameraRotation(float DeltaTime)
     FirstPersonCamera->SetWorldRotation(DesiredRotation);
 }
 
+void APlayerCharacter::UpdateSlideVisuals(float DeltaTime)
+{
+   // -------------------------------------------------------------
+   // Camera: smoothly lower while sliding (like "The Finals"), smoothly
+   // rise back to normal once the slide ends. The actual displacement is
+   // applied in UpdateCameraBob so it composes cleanly with footstep bob.
+   // -------------------------------------------------------------
+   const bool bIsSliding = FindAbility(UDashAbility::StaticClass())->IsActive();
+   const float TargetCameraSlideOffset = bIsSliding ? -SlideCameraDropAmount : 0.f;
+   CurrentSlideCameraOffset = FMath::FInterpTo(
+      CurrentSlideCameraOffset, TargetCameraSlideOffset, DeltaTime, SlideCameraInterpSpeed);
+
+   // -------------------------------------------------------------
+   // Gun: pitch up towards the sky while sliding, settle back down to its
+   // normal aiming rotation once the slide ends.
+   // -------------------------------------------------------------
+   const FRotator TargetGunSlideRotation = bIsSliding ? FRotator(SlideWeaponPitchDegrees, 0.f, 0.f) : FRotator::ZeroRotator;
+   CurrentGunSlideRotationOffset = FMath::RInterpTo(
+      CurrentGunSlideRotationOffset, TargetGunSlideRotation, DeltaTime, SlideWeaponInterpSpeed);
+
+   if (IsValid(GunChildComponent))
+   {
+      GunChildComponent->SetRelativeRotation(GunBaseRelativeRotation + CurrentGunSlideRotationOffset);
+   }
+}
 
 void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 {

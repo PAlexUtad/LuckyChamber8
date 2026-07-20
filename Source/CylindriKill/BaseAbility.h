@@ -1,4 +1,14 @@
-﻿#pragma once
+﻿// 
+// BaseAbility.h
+// 
+// Parent class for all (both enemy & player) abilities.
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
+
+#pragma once
 
 #include "BaseCharacter.h"
 #include "BaseAbility.generated.h"
@@ -13,16 +23,16 @@ protected:
 	// ------------------------------------------------------------------
 	// Internal Variables
 	// ------------------------------------------------------------------
-	bool         bCanTrigger;
-	FTimerHandle CooldownTimer;
-
-	TWeakObjectPtr<ABaseCharacter> Parent;
+	bool bCanTrigger;
+	
+	UPROPERTY() TObjectPtr<ABaseCharacter> Parent;
+	UPROPERTY() FTimerHandle CooldownTimerHandle;
 	
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
-	float CooldownDuration;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	float CooldownTime;
 	
 public:
 	
@@ -32,9 +42,9 @@ public:
 	UBaseAbility();
 	
 	// ------------------------------------------------------------------
-	// Overridden Methods
+	// Exposed Methods
 	// ------------------------------------------------------------------
-	virtual void BeginAbility();
-	virtual void TickAbility(float);
-	virtual void EndAbility();
+	virtual void BeginPlay() override;
+	virtual bool IsActive() const;
+	virtual bool Trigger();
 };

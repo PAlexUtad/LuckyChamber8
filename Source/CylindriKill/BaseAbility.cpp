@@ -1,36 +1,59 @@
-﻿
+﻿// 
+// BaseAbility.cpp
+// 
+// Implementation of the 'BaseAbility' class.
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
+
 #include "BaseAbility.h"
 
-#include "TimerManager.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "TimerManager.h"
 
+// ------------------------------------------------------------------
+// Constructor & Destructor
+// ------------------------------------------------------------------
 UBaseAbility::UBaseAbility()
 {
-	Parent = Cast<ABaseCharacter>(this->GetOwner());
+	bCanTrigger  = true;
+	CooldownTime = 1.0f;
+}
+
+// ------------------------------------------------------------------
+// Overridden Methods
+// ------------------------------------------------------------------
+void UBaseAbility::BeginPlay()
+{
+	Super::BeginPlay();
 	
-	// WARNING: This will asset that 'Parent' is a ABaseCharacter, crashing if it is not.
-	// check(Parent);
+	Parent = Cast<ABaseCharacter>(GetOwner());
 }
 
-void UBaseAbility::BeginAbility()
+bool UBaseAbility::IsActive() const
 {
+	return false;
 }
 
-void UBaseAbility::TickAbility(float)
+bool UBaseAbility::Trigger()
 {
-}
-
-void UBaseAbility::EndAbility()
-{
+	if (!bCanTrigger)
+		return false;
+	
 	bCanTrigger = false;
 
 	GetWorld()->GetTimerManager().SetTimer(
-	   CooldownTimer,
+	   CooldownTimerHandle,
 	   FTimerDelegate::CreateLambda([this]()
 	   {
 		   bCanTrigger = true;
 	   }),
-	   CooldownDuration,
+	   CooldownTime,
 	   false
 	);
+	
+	return true;
 }

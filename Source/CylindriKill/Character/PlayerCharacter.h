@@ -33,10 +33,9 @@ public:
     
     APlayerCharacter();
 
+    virtual void BeginPlay() override;
+    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
     virtual void Tick(float DeltaTime) override;
-    
-    // Called to bind functionality to input
-    virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Shake")
     TSubclassOf<UCameraShakeBase> ShootCameraShakeClass;
@@ -44,17 +43,13 @@ public:
     void PlayShootCameraShake() const;
 
 protected:
-    virtual void BeginPlay() override;
 
     // ------------------------------------------------------------------
     // Components
     // ------------------------------------------------------------------
-
-    /** First-person camera, attached directly to the capsule at eye height. No spring arm - zero lag. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<UCameraComponent> FirstPersonCamera;
 
-    /** Child actor component that holds and displays the equipped gun blueprint. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<UChildActorComponent> GunChildComponent;
 
@@ -64,7 +59,6 @@ protected:
     // ------------------------------------------------------------------
     // Enhanced Input Assets (assign in the editor on the BP subclass)
     // ------------------------------------------------------------------
-
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputMappingContext> DefaultMappingContext;
 
@@ -85,98 +79,38 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> ParryAction;
+    
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> ScrollAction;
     
     // ------------------------------------------------------------------
     // Input Handlers
     // ------------------------------------------------------------------
-
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void StartParry();
-    void StartDash();
     void Scroll(const FInputActionValue& Value);
-    /** Forwards the fire-pressed input down to whatever gun is currently equipped. */
     void StartFire();
-
-    /** Forwards the fire-released input down to whatever gun is currently equipped. */
     void StopFire();
-
-    // ------------------------------------------------------------------
-    // Dash
-    // ------------------------------------------------------------------
-
-    /** Instantaneous horizontal speed applied on dash (uu/s). */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-    float DashImpulseStrength = 2500.f;
-
-    /** Cooldown between dashes, in seconds. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-    float DashCooldownDuration = 0.75f;
-
-    bool bCanDash = true;
-    FTimerHandle DashCooldownTimerHandle;
-    void ResetDashCooldown();
-
-    /** Cached raw 2D move input (X = right/left, Y = forward/back). Used to derive dash direction. */
-    FVector2D LastMoveInput = FVector2D::ZeroVector;
-
+    
     // ------------------------------------------------------------------
     // Slide (post-dash ground slide)
     // ------------------------------------------------------------------
-
-    /** How long the slide state (low friction + lowered camera + tilted gun) lasts after a dash. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideDuration = 0.75f;
-
-    /** Ground friction used only while sliding - low, so the dash burst actually carries the player. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideGroundFriction = 0.1f;
-
-    /** Braking deceleration used only while sliding - low, so speed bleeds off gradually, not instantly. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideBrakingDeceleration = 100.f;
-
-    /** Braking friction lowered during slide so standing-still slides actually carry. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideBrakingFriction = 0.0f;
-
-    /** Lower acceleration during slide so held WASD keys don't instantly yank/kill your momentum. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideMaxAcceleration = 500.f;
-
-    /** How far the camera drops (in uu) at the peak of the slide. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideCameraDropAmount = 40.f;
-
-    /** How quickly the camera interpolates towards/away from the slide drop. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideCameraInterpSpeed = 10.f;
-
-    /** Pitch (in degrees) the gun rotates to while sliding, relative to its resting rotation. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideGunPitchDegrees = -65.f;
-
-    /** How quickly the gun interpolates towards/away from its slide pitch. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Slide")
-    float SlideGunInterpSpeed = 10.f;
-
-    bool bIsSliding = false;
-    FTimerHandle SlideTimerHandle;
-    void EndSlide();
-
-    /** Movement values captured once in BeginPlay so EndSlide() can restore the "normal" feel exactly. */
-    float DefaultGroundFriction = 0.f;
-    float DefaultBrakingDecelerationWalking = 0.f;
-    float DefaultBrakingFriction = 0.f;
-    float DefaultMaxAcceleration = 0.f;
-    float DefaultGravityScale = 1.6f;
-
     float CurrentSlideCameraOffset = 0.f;
     FRotator CurrentGunSlideRotationOffset = FRotator::ZeroRotator;
-    void UpdateSlideVisuals(float DeltaTime);
-
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+    float SlideCameraDropAmount;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+    float SlideCameraInterpSpeed;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+    float SlideWeaponInterpSpeed;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+    float SlideWeaponPitchDegrees;
+    
     // ------------------------------------------------------------------
     // Wall Slide
     // ------------------------------------------------------------------
@@ -253,4 +187,10 @@ protected:
 
     UFUNCTION()
     void HandleDeath(AActor* DamageCauser);
+    
+    void UpdateSlideVisuals(float DeltaTime);
+    
+public:
+    
+    FORCEINLINE TObjectPtr<UChildActorComponent> GetWeaponComponent() const { return GunChildComponent; }
 };

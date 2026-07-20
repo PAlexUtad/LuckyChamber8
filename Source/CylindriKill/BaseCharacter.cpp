@@ -10,10 +10,14 @@
 
 #include "BaseCharacter.h"
 
+#include "BaseAbility.h"
 #include "Component/HealthComponent.h"
 #include "Engine/Engine.h"
 #include "PaperSpriteComponent.h"
 
+// ------------------------------------------------------------------
+// Constructor & Destructor
+// ------------------------------------------------------------------
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -33,10 +37,7 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (HealthComponent)
-	{
-		HealthComponent->OnDeath.AddDynamic(this, &ABaseCharacter::Die);
-	}
+	HealthComponent->OnDeath.AddDynamic(this, &ABaseCharacter::Die);
 }
 
 void ABaseCharacter::Tick(const float DeltaTime)
@@ -47,13 +48,31 @@ void ABaseCharacter::Tick(const float DeltaTime)
 // ------------------------------------------------------------------
 // Internal Methods
 // ------------------------------------------------------------------
-void ABaseCharacter::Spawn()
-{
-	
-}
-
 void ABaseCharacter::Die(AActor* Aggressor)
 {
 	// TODO: Take death animation into account with a delay before destroying the character.
 	Destroy();
+}
+
+UBaseAbility* ABaseCharacter::FindAbility(const TSubclassOf<UBaseAbility> AbilityClass)
+{
+	for (TObjectPtr Ability : Abilities)
+	{
+		if (Ability->GetClass() == AbilityClass)
+			return Ability;
+	}
+	
+	return nullptr;
+}
+
+void ABaseCharacter::TriggerAbility(const TSubclassOf<UBaseAbility> AbilityClass)
+{
+	for (const TObjectPtr Ability : Abilities)
+	{
+		if (Ability->GetClass() == AbilityClass)
+		{
+			Ability->Trigger();
+			return;
+		}
+	}
 }
