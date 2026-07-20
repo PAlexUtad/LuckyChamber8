@@ -4,7 +4,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "CylinderPlayer.h"
 #include "CylinderEnemyChar.h"
-#include "HealthComponent.h"
+#include "CylindriKill/Component/HealthComponent.h"
 
 ABaseProjectile::ABaseProjectile()
 {

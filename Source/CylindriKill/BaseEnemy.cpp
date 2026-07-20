@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "CylinderEnemyChar.h"
+#include "BaseEnemy.h"
 
 #include "BaseProjectile.h"
 #include "CylindriKill/Component/HealthComponent.h"
@@ -12,7 +12,7 @@
 #include "Engine/Engine.h"
 #include "Runtime/AIModule/Classes/AIController.h"
 
-ACylinderEnemyChar::ACylinderEnemyChar()
+ABaseEnemy::ABaseEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -47,22 +47,22 @@ ACylinderEnemyChar::ACylinderEnemyChar()
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
-void ACylinderEnemyChar::BeginPlay()
+void ABaseEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 
 	if (HealthComponent)
 	{
-		HealthComponent->OnDeath.AddDynamic(this, &ACylinderEnemyChar::HandleDeath);
+		HealthComponent->OnDeath.AddDynamic(this, &ABaseEnemy::HandleDeath);
 	}
 
 	if (GetWorld() && ProjectileClass)
 	{
-		GetWorldTimerManager().SetTimer(FireTimerHandle, this, &ACylinderEnemyChar::FireAtPlayer, ShootInterval, true);
+		GetWorldTimerManager().SetTimer(FireTimerHandle, this, &ABaseEnemy::FireAtPlayer, ShootInterval, true);
 	}
 }
 
-void ACylinderEnemyChar::FireAtPlayer()
+void ABaseEnemy::FireAtPlayer()
 {
 	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if (!PlayerPawn || !ProjectileClass) return;
@@ -79,7 +79,7 @@ void ACylinderEnemyChar::FireAtPlayer()
 	GetWorld()->SpawnActor<ABaseProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
 }
 
-bool ACylinderEnemyChar::IsPlayerInRange() const
+bool ABaseEnemy::IsPlayerInRange() const
 {
 	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if (!PlayerPawn)
@@ -90,7 +90,7 @@ bool ACylinderEnemyChar::IsPlayerInRange() const
 	const float DistSq = FVector::DistSquared(GetActorLocation(), PlayerPawn->GetActorLocation());
 	return DistSq <= FMath::Square(MaxActivationRange);
 }
-void ACylinderEnemyChar::Tick(float DeltaTime)
+void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
@@ -106,7 +106,7 @@ void ACylinderEnemyChar::Tick(float DeltaTime)
 	UpdateMovement(DeltaTime);
 }
 
-void ACylinderEnemyChar::RotateToFacePlayer(float DeltaTime)
+void ABaseEnemy::RotateToFacePlayer(float DeltaTime)
 {
 	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if (!PlayerPawn)
@@ -125,7 +125,7 @@ void ACylinderEnemyChar::RotateToFacePlayer(float DeltaTime)
 	SetActorRotation(NewRotation);
 }
 
-float ACylinderEnemyChar::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float ABaseEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
@@ -136,7 +136,7 @@ float ACylinderEnemyChar::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 
 	return ActualDamage;
 }
-void ACylinderEnemyChar::HandleDeath(AActor* DamageCauser)
+void ABaseEnemy::HandleDeath(AActor* DamageCauser)
 {
 	if (GEngine)
 	{
@@ -144,7 +144,7 @@ void ACylinderEnemyChar::HandleDeath(AActor* DamageCauser)
 	}
 	Destroy();
 }
-void ACylinderEnemyChar::MoveToLocationViaNav(const FVector& TargetLocation, float AcceptanceRadius)
+void ABaseEnemy::MoveToLocationViaNav(const FVector& TargetLocation, float AcceptanceRadius)
 {
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
@@ -154,7 +154,7 @@ void ACylinderEnemyChar::MoveToLocationViaNav(const FVector& TargetLocation, flo
 	}
 }
 
-void ACylinderEnemyChar::MoveToActorViaNav(AActor* TargetActor, float AcceptanceRadius)
+void ABaseEnemy::MoveToActorViaNav(AActor* TargetActor, float AcceptanceRadius)
 {
 	AAIController* AIController = Cast<AAIController>(GetController());
 	if (!AIController)
@@ -177,7 +177,7 @@ void ACylinderEnemyChar::MoveToActorViaNav(AActor* TargetActor, float Acceptance
 	}
 }
 
-void ACylinderEnemyChar::StopNavMovement()
+void ABaseEnemy::StopNavMovement()
 {
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{

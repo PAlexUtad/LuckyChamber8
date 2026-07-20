@@ -11,7 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "BaseProjectile.h"
 #include "CylinderPlayer.h"
-#include "HealthComponent.h"
+#include "CylindriKill/Component/HealthComponent.h"
 
 // Sets default values
 ABaseGun::ABaseGun()

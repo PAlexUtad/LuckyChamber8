@@ -1,24 +1,24 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "CylinderPlayer.h"
+#include "PlayerCharacter.h"
 
-#include "BaseGun.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraShakeBase.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ChildActorComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "CylindriKill/BaseGun.h"
+#include "CylindriKill/Component/HealthComponent.h"
+#include "DrawDebugHelpers.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "TimerManager.h"
-#include "Camera/CameraShakeBase.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
-#include "DrawDebugHelpers.h"
-#include "CylindriKill/Component/HealthComponent.h"
+#include "TimerManager.h"
 
-ACylinderPlayer::ACylinderPlayer()
+APlayerCharacter::APlayerCharacter()
 {
    PrimaryActorTick.bCanEverTick = true;
 
@@ -86,7 +86,7 @@ ACylinderPlayer::ACylinderPlayer()
     MoveComp->NavAgentProps.bCanCrouch = false;
 }
 
-void ACylinderPlayer::BeginPlay()
+void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -104,7 +104,7 @@ void ACylinderPlayer::BeginPlay()
     }
    if (HealthComponent)
    {
-      HealthComponent->OnDeath.AddDynamic(this, &ACylinderPlayer::HandleDeath);
+      HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::HandleDeath);
    }
     // Cache the camera's resting position so bobbing offsets are always relative to it.
     if (FirstPersonCamera)
@@ -135,7 +135,7 @@ void ACylinderPlayer::BeginPlay()
     }
 }
 
-void ACylinderPlayer::Tick(float DeltaTime)
+void APlayerCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
@@ -145,7 +145,7 @@ void ACylinderPlayer::Tick(float DeltaTime)
     UpdateCameraRotation(DeltaTime); // must run last - applies pitch/yaw/roll after everything else has decided its inputs
 }
 
-void ACylinderPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
@@ -153,13 +153,13 @@ void ACylinderPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
     {
        if (MoveAction)
        {
-          EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ACylinderPlayer::Move);
-          EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ACylinderPlayer::Move);
+          EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
+          EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &APlayerCharacter::Move);
        }
 
        if (LookAction)
        {
-          EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ACylinderPlayer::Look);
+          EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
        }
 
        if (JumpAction)
@@ -170,26 +170,26 @@ void ACylinderPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
        if (DashAction)
        {
-          EIC->BindAction(DashAction, ETriggerEvent::Started, this, &ACylinderPlayer::StartDash);
+          EIC->BindAction(DashAction, ETriggerEvent::Started, this, &APlayerCharacter::StartDash);
        }
 
        if (FireAction)
        {
-          EIC->BindAction(FireAction, ETriggerEvent::Started, this, &ACylinderPlayer::StartFire);
-          EIC->BindAction(FireAction, ETriggerEvent::Completed, this, &ACylinderPlayer::StopFire);
+          EIC->BindAction(FireAction, ETriggerEvent::Started, this, &APlayerCharacter::StartFire);
+          EIC->BindAction(FireAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopFire);
        }
        if (ParryAction)
        {
-          EIC->BindAction(ParryAction, ETriggerEvent::Started, this, &ACylinderPlayer::StartParry);
+          EIC->BindAction(ParryAction, ETriggerEvent::Started, this, &APlayerCharacter::StartParry);
        }
        if (ScrollAction)
        {
-          EIC->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &ACylinderPlayer::Scroll);
+          EIC->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Scroll);
        }
     }
 }
 
-void ACylinderPlayer::Move(const FInputActionValue& Value)
+void APlayerCharacter::Move(const FInputActionValue& Value)
 {
     const FVector2D InputVector = Value.Get<FVector2D>();
     LastMoveInput = InputVector; // cached for dash direction; becomes (0,0) on the Completed event
@@ -207,7 +207,7 @@ void ACylinderPlayer::Move(const FInputActionValue& Value)
     }
 }
 
-void ACylinderPlayer::Look(const FInputActionValue& Value)
+void APlayerCharacter::Look(const FInputActionValue& Value)
 {
     const FVector2D LookAxis = Value.Get<FVector2D>();
 
@@ -219,7 +219,7 @@ void ACylinderPlayer::Look(const FInputActionValue& Value)
        AddControllerPitchInput(LookAxis.Y);
     }
 }
-void ACylinderPlayer::Scroll(const FInputActionValue& Value)
+void APlayerCharacter::Scroll(const FInputActionValue& Value)
 {
    if (GunChildComponent)
    {
@@ -229,7 +229,7 @@ void ACylinderPlayer::Scroll(const FInputActionValue& Value)
       }
    }
 }
-void ACylinderPlayer::StartParry()
+void APlayerCharacter::StartParry()
 {
    if (GunChildComponent)
    {
@@ -240,7 +240,7 @@ void ACylinderPlayer::StartParry()
    }
 }
 
-void ACylinderPlayer::StartDash()
+void APlayerCharacter::StartDash()
 {
     if (!bCanDash)
     {
@@ -294,7 +294,7 @@ void ACylinderPlayer::StartDash()
     GetWorldTimerManager().SetTimer(
        SlideTimerHandle,
        this,
-       &ACylinderPlayer::EndSlide,
+       &APlayerCharacter::EndSlide,
        SlideDuration,
        false);
 
@@ -302,17 +302,17 @@ void ACylinderPlayer::StartDash()
     GetWorldTimerManager().SetTimer(
        DashCooldownTimerHandle,
        this,
-       &ACylinderPlayer::ResetDashCooldown,
+       &APlayerCharacter::ResetDashCooldown,
        DashCooldownDuration,
        false);
 }
 
-void ACylinderPlayer::ResetDashCooldown()
+void APlayerCharacter::ResetDashCooldown()
 {
     bCanDash = true;
 }
 
-void ACylinderPlayer::EndSlide()
+void APlayerCharacter::EndSlide()
 {
    bIsSliding = false;
 
@@ -325,7 +325,7 @@ void ACylinderPlayer::EndSlide()
    }
 }
 
-void ACylinderPlayer::StartFire()
+void APlayerCharacter::StartFire()
 {
    if (!GunChildComponent)
    {
@@ -352,7 +352,7 @@ void ACylinderPlayer::StartFire()
    }
 }
 
-void ACylinderPlayer::StopFire()
+void APlayerCharacter::StopFire()
 {
     if (!GunChildComponent)
     {
@@ -365,7 +365,7 @@ void ACylinderPlayer::StopFire()
     }
 }
 
-void ACylinderPlayer::Jump()
+void APlayerCharacter::Jump()
 {
    // If we are currently sliding, cancel the slide immediately on jump press
    if (bIsSliding)
@@ -384,7 +384,7 @@ void ACylinderPlayer::Jump()
    Super::Jump();
 }
 
-void ACylinderPlayer::PlayShootCameraShake() const
+void APlayerCharacter::PlayShootCameraShake() const
 {
    if (ShootCameraShakeClass && Controller)
    {
@@ -395,7 +395,7 @@ void ACylinderPlayer::PlayShootCameraShake() const
    }
 }
 
-void ACylinderPlayer::UpdateCameraBob(float DeltaTime)
+void APlayerCharacter::UpdateCameraBob(float DeltaTime)
 {
     if (!FirstPersonCamera)
     {
@@ -449,7 +449,7 @@ void ACylinderPlayer::UpdateCameraBob(float DeltaTime)
    }
 }
 
-void ACylinderPlayer::UpdateSlideVisuals(float DeltaTime)
+void APlayerCharacter::UpdateSlideVisuals(float DeltaTime)
 {
     // -------------------------------------------------------------
     // Camera: smoothly lower while sliding (like "The Finals"), smoothly
@@ -474,7 +474,7 @@ void ACylinderPlayer::UpdateSlideVisuals(float DeltaTime)
     }
 }
 
-bool ACylinderPlayer::DetectWall(FVector& OutWallNormal) const
+bool APlayerCharacter::DetectWall(FVector& OutWallNormal) const
 {
     const FVector Start = GetActorLocation();
 
@@ -505,7 +505,7 @@ bool ACylinderPlayer::DetectWall(FVector& OutWallNormal) const
     return false;
 }
 
-void ACylinderPlayer::UpdateWallSlide(float DeltaTime)
+void APlayerCharacter::UpdateWallSlide(float DeltaTime)
 {
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (!MoveComp)
@@ -550,7 +550,7 @@ void ACylinderPlayer::UpdateWallSlide(float DeltaTime)
     CurrentCameraRollOffset = FMath::FInterpTo(CurrentCameraRollOffset, TargetRoll, DeltaTime, WallSlideCameraRollInterpSpeed);
 }
 
-void ACylinderPlayer::WallJump()
+void APlayerCharacter::WallJump()
 {
     FVector LaunchVelocity = CurrentWallNormal * WallJumpAwayStrength;
     LaunchVelocity.Z = WallJumpUpStrength;
@@ -566,7 +566,7 @@ void ACylinderPlayer::WallJump()
     }
 }
 
-void ACylinderPlayer::UpdateCameraRotation(float DeltaTime)
+void APlayerCharacter::UpdateCameraRotation(float DeltaTime)
 {
     if (!FirstPersonCamera || !Controller)
     {
@@ -579,7 +579,7 @@ void ACylinderPlayer::UpdateCameraRotation(float DeltaTime)
 }
 
 
-void ACylinderPlayer::HandleDeath(AActor* DamageCauser)
+void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 {
    if (GEngine)
    {

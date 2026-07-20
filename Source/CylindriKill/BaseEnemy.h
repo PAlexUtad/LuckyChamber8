@@ -1,0 +1,70 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "../Plugins/2D/Paper2D/Source/Paper2D/Classes/PaperSpriteComponent.h"
+#include "Runtime/AIModule/Classes/AIController.h"
+#include "BaseEnemy.generated.h"
+
+
+UCLASS()
+class CYLINDRIKILL_API ABaseEnemy : public ACharacter
+{
+	GENERATED_BODY()
+
+public:
+	ABaseEnemy();
+
+	virtual void Tick(float DeltaTime) override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+protected:
+	virtual void BeginPlay() override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPaperSpriteComponent> SpriteComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UHealthComponent> HealthComponent;
+
+	UFUNCTION()
+	void HandleDeath(AActor* DamageCauser);
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+	bool bFacePlayer = true;
+	
+	/** Projectile class to spawn when firing */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	TSubclassOf<class ABaseProjectile> ProjectileClass;
+
+	FTimerHandle FireTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float ShootInterval = 2.0f;
+
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void FireAtPlayer();
+
+	/** Hook for subclasses to add custom movement each tick, called after facing logic */
+	virtual void UpdateMovement(float DeltaTime) {}
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void MoveToLocationViaNav(const FVector& TargetLocation, float AcceptanceRadius = 50.f);
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void MoveToActorViaNav(AActor* TargetActor, float AcceptanceRadius = 50.f);
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void StopNavMovement();
+
+
+	/** If the player is farther than this, the enemy goes fully dormant - no movement, no shooting, no facing. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float MaxActivationRange = 4000.f;
+
+	/** True if the player is currently within MaxActivationRange (cheap to check, cached once per tick). */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	bool IsPlayerInRange() const;
+private:
+	void RotateToFacePlayer(float DeltaTime);
+};
