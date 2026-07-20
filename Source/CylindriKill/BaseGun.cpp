@@ -2,16 +2,15 @@
 
 #include "BaseGun.h"
 
-#include "CylinderEnemyChar.h"
+#include "BaseProjectile.h"
 #include "Camera/CameraComponent.h"
+#include "CylindriKill/Character/PlayerCharacter.h"
+#include "CylindriKill/Component/HealthComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "GameFramework/Pawn.h"
-#include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
-#include "BaseProjectile.h"
-#include "CylinderPlayer.h"
-#include "HealthComponent.h"
+#include "TimerManager.h"
 
 // Sets default values
 ABaseGun::ABaseGun()
@@ -300,7 +299,7 @@ void ABaseGun::Fire()
     const APawn* OwningPawn = Cast<APawn>(GetOwner());
     if (IsValid(OwningPawn))
     {
-       Cast<ACylinderPlayer>(OwningPawn)->PlayShootCameraShake();
+       Cast<APlayerCharacter>(OwningPawn)->PlayShootCameraShake();
     }
     
     const UCameraComponent* AimCamera = OwningPawn ? OwningPawn->FindComponentByClass<UCameraComponent>() : nullptr;
