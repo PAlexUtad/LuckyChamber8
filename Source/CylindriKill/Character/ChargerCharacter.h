@@ -2,11 +2,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CylindriKill/CylinderEnemyChar.h"
+#include "CylindriKill/BaseEnemy.h"
 #include "ChargerCharacter.generated.h"
 
 UCLASS()
-class CYLINDRIKILL_API AChargerCharacter : public ACylinderEnemyChar
+class CYLINDRIKILL_API AChargerCharacter : public ABaseEnemy
 {
 	GENERATED_BODY()
 public:

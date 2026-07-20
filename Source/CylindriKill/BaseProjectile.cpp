@@ -2,11 +2,9 @@
 
 #include "BaseEnemy.h"
 #include "Components/SphereComponent.h"
-#include "PaperSpriteComponent.h"
-#include "GameFramework/ProjectileMovementComponent.h"
-#include "CylinderPlayer.h"
-#include "CylinderEnemyChar.h"
 #include "CylindriKill/Component/HealthComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "PaperSpriteComponent.h"
 
 ABaseProjectile::ABaseProjectile()
 {
@@ -51,7 +49,7 @@ void ABaseProjectile::OnSphereOverlap(
 	// Enemy projectiles shouldn't collide with or damage other enemies - this is a friendly-fire
 	// rule, a separate concern from "can this thing be damaged," so it intentionally still checks
 	// the concrete enemy class rather than going through UHealthComponent.
-	if (OtherActor->IsA(ACylinderEnemyChar::StaticClass()) || OtherActor->IsA(ABaseEnemy::StaticClass()))
+	if (OtherActor->IsA(ABaseEnemy::StaticClass()))
 	{
 		return; // pass straight through, no damage, no destroy
 	}
