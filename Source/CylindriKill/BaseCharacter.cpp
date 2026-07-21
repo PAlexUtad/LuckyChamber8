@@ -54,6 +54,18 @@ void ABaseCharacter::Die(AActor* Aggressor)
 	Destroy();
 }
 
+void ABaseCharacter::ActivateAbility(const TSubclassOf<UBaseAbility> AbilityClass)
+{
+	for (const TObjectPtr Ability : Abilities)
+	{
+		if (Ability->GetClass() == AbilityClass)
+		{
+			Ability->Activate();
+			return;
+		}
+	}
+}
+
 UBaseAbility* ABaseCharacter::FindAbility(const TSubclassOf<UBaseAbility> AbilityClass)
 {
 	for (TObjectPtr Ability : Abilities)
@@ -63,16 +75,4 @@ UBaseAbility* ABaseCharacter::FindAbility(const TSubclassOf<UBaseAbility> Abilit
 	}
 	
 	return nullptr;
-}
-
-void ABaseCharacter::TriggerAbility(const TSubclassOf<UBaseAbility> AbilityClass)
-{
-	for (const TObjectPtr Ability : Abilities)
-	{
-		if (Ability->GetClass() == AbilityClass)
-		{
-			Ability->Trigger();
-			return;
-		}
-	}
 }

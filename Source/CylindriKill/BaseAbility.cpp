@@ -10,8 +10,8 @@
 
 #include "BaseAbility.h"
 
+#include "BaseCharacter.h"
 #include "Engine/Engine.h"
-#include "Engine/World.h"
 #include "TimerManager.h"
 
 // ------------------------------------------------------------------
@@ -19,41 +19,28 @@
 // ------------------------------------------------------------------
 UBaseAbility::UBaseAbility()
 {
-	bCanTrigger  = true;
 	CooldownTime = 1.0f;
 }
 
 // ------------------------------------------------------------------
-// Overridden Methods
+// Exposed Methods
 // ------------------------------------------------------------------
-void UBaseAbility::BeginPlay()
+bool UBaseAbility::Activate()
 {
-	Super::BeginPlay();
-	
-	Parent = Cast<ABaseCharacter>(GetOwner());
-}
-
-bool UBaseAbility::IsActive() const
-{
-	return false;
-}
-
-bool UBaseAbility::Trigger()
-{
-	if (!bCanTrigger)
+	if (IsOnCooldown())
 		return false;
 	
-	bCanTrigger = false;
-
 	GetWorld()->GetTimerManager().SetTimer(
 	   CooldownTimerHandle,
-	   FTimerDelegate::CreateLambda([this]()
-	   {
-		   bCanTrigger = true;
-	   }),
+	   FTimerDelegate(),
 	   CooldownTime,
 	   false
 	);
 	
 	return true;
+}
+
+bool UBaseAbility::IsOnCooldown() const
+{
+	return GetWorld()->GetTimerManager().IsTimerActive(CooldownTimerHandle);
 }

@@ -164,7 +164,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
        if (DashAction)
        {
-          EIC->BindAction(DashAction, ETriggerEvent::Started, this, &APlayerCharacter::TriggerAbility,
+          EIC->BindAction(DashAction, ETriggerEvent::Started, this, &APlayerCharacter::ActivateAbility,
              TSubclassOf<UBaseAbility>(UDashAbility::StaticClass()));
        }
 
@@ -320,7 +320,8 @@ void APlayerCharacter::UpdateCameraBob(float DeltaTime)
 
     // While sliding, the smooth camera drop (handled in UpdateSlideVisuals) takes over -
     // footstep bob would fight it and look jittery on top of a slide.
-   const bool bIsSliding = FindAbility(UDashAbility::StaticClass())->IsActive();
+    UDashAbility* DashAbility = Cast<UDashAbility>(FindAbility(UDashAbility::StaticClass()));
+    const bool bIsSliding = DashAbility ? DashAbility->IsOnCooldown() : false;
     const bool bShouldBob = SpeedRatio > KINDA_SMALL_NUMBER && GetCharacterMovement()->IsMovingOnGround() && !bIsSliding;
     if (bShouldBob)
     {
@@ -466,7 +467,8 @@ void APlayerCharacter::UpdateSlideVisuals(float DeltaTime)
    // rise back to normal once the slide ends. The actual displacement is
    // applied in UpdateCameraBob so it composes cleanly with footstep bob.
    // -------------------------------------------------------------
-   const bool bIsSliding = FindAbility(UDashAbility::StaticClass())->IsActive();
+   UDashAbility* DashAbility = Cast<UDashAbility>(FindAbility(UDashAbility::StaticClass()));
+   const bool bIsSliding = DashAbility ? DashAbility->IsOnCooldown() : false;
    const float TargetCameraSlideOffset = bIsSliding ? -SlideCameraDropAmount : 0.f;
    CurrentSlideCameraOffset = FMath::FInterpTo(
       CurrentSlideCameraOffset, TargetCameraSlideOffset, DeltaTime, SlideCameraInterpSpeed);

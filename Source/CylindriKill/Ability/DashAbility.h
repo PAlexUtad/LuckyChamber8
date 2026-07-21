@@ -19,40 +19,37 @@ class CYLINDRIKILL_API UDashAbility : public UBaseAbility
 	GENERATED_BODY()
 	
 	// ------------------------------------------------------------------
-	// Internal Variables
+	// Internal Methods
 	// ------------------------------------------------------------------
 	bool bIsSliding;
 	
-	float DefaultGroundFriction;
-	float DefaultBrakingDecelerationWalking;
-	float DefaultBrakingFriction;
-	float DefaultMaxAcceleration;
-	float DefaultGravityScale;
+	float BrakingDecelerationWalking;
+	float BrakingFriction;
+	float GravityScale;
+	float GroundFriction;
+	float MaxAcceleration;
 	
-	FVector2D    LastMoveInput;
 	FTimerHandle SlideTimerHandle;
-	
-	UPROPERTY() TObjectPtr<UCharacterMovementComponent> MoveComponent;
-	
+
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float ImpulseStrength;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideBrakingDeceleration;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideBrakingFriction;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideDuration;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideGroundFriction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideMaxAcceleration;
 	
 public:
@@ -63,11 +60,9 @@ public:
 	UDashAbility();
 	
 	// ------------------------------------------------------------------
-	// Overridden Methods
+	// Exposed Methods
 	// ------------------------------------------------------------------
-	virtual void BeginPlay() override;
-	virtual bool IsActive() const override;
-	virtual bool Trigger() override;
+	virtual bool Activate() override;
 	
 private:
 	

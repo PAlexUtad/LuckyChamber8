@@ -28,7 +28,7 @@ protected:
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Instanced, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Instanced, meta = (AllowPrivateAccess = "true")) // <- Added comma before meta
 	TArray<TObjectPtr<UBaseAbility>> Abilities;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gameplay|Components", meta = (AllowPrivateAccess = "true"))
@@ -57,6 +57,6 @@ protected:
 	// Blueprintable Methods
 	// ------------------------------------------------------------------
 	UFUNCTION(BlueprintCallable) virtual void Die(AActor* Aggressor);
+	UFUNCTION(BlueprintCallable) virtual void ActivateAbility(const TSubclassOf<UBaseAbility> AbilityClass);
 	UFUNCTION(BlueprintCallable) virtual UBaseAbility* FindAbility(const TSubclassOf<UBaseAbility> AbilityClass);
-	UFUNCTION(BlueprintCallable) virtual void TriggerAbility(const TSubclassOf<UBaseAbility> AbilityClass);
 };

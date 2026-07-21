@@ -10,41 +10,39 @@
 
 #pragma once
 
-#include "BaseCharacter.h"
+#include "CoreMinimal.h"
+#include "Engine/TimerHandle.h"
+#include "UObject/Object.h"
 #include "BaseAbility.generated.h"
 
-UCLASS(Blueprintable, BlueprintType, DefaultToInstanced, EditInlineNew)
-class CYLINDRIKILL_API UBaseAbility : public UActorComponent
+UCLASS(EditInlineNew, Blueprintable, BlueprintType)
+class CYLINDRIKILL_API UBaseAbility : public UObject
 {
 	GENERATED_BODY()
-	
-protected:
-	
+    
 	// ------------------------------------------------------------------
 	// Internal Variables
 	// ------------------------------------------------------------------
-	bool bCanTrigger;
-	
-	UPROPERTY() TObjectPtr<ABaseCharacter> Parent;
-	UPROPERTY() FTimerHandle CooldownTimerHandle;
-	
+	FTimerHandle CooldownTimerHandle;
+    
+protected:
+    
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay|Ability")
 	float CooldownTime;
-	
+    
 public:
-	
+    
 	// ------------------------------------------------------------------
 	// Constructor & Destructor
 	// ------------------------------------------------------------------
 	UBaseAbility();
-	
+    
 	// ------------------------------------------------------------------
 	// Exposed Methods
 	// ------------------------------------------------------------------
-	virtual void BeginPlay() override;
-	virtual bool IsActive() const;
-	virtual bool Trigger();
+	virtual bool Activate();
+	virtual bool IsOnCooldown() const;
 };

@@ -1,4 +1,17 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// 
+// PlayerCharacter.h
+// 
+// Lightweight, template-free first-person character built for a hyper-fast arcade shooter.
+// - No skeletal mesh / arms - camera-only first-person view.
+// - Ultrakill-style movement: instant acceleration, zero slide on stop.
+// - Directional dash (ground + air) with cooldown.
+// - Procedural camera bob driven by real lateral velocity.
+// - Wall slide: slowed fall + camera lean when airborne next to a wall, with a boosted wall jump.
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
 
 #pragma once
 
@@ -9,21 +22,11 @@
 #include "PlayerCharacter.generated.h"
 
 class UCameraComponent;
+class UCameraShakeBase;
 class UChildActorComponent;
 class UInputMappingContext;
 class UInputAction;
-class UCameraShakeBase;
 
-/**
- * APlayerCharacter
- *
- * Lightweight, template-free first-person character built for a hyper-fast arcade shooter.
- * - No skeletal mesh / arms - camera-only first-person view.
- * - Ultrakill-style movement: instant acceleration, zero slide on stop.
- * - Directional dash (ground + air) with cooldown.
- * - Procedural camera bob driven by real lateral velocity.
- * - Wall slide: slowed fall + camera lean when airborne next to a wall, with a boosted wall jump.
- */
 UCLASS()
 class CYLINDRIKILL_API APlayerCharacter : public ABaseCharacter
 {
