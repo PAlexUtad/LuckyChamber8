@@ -16,12 +16,12 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 class ABaseCharacter;
+
 // ------------------------------------------------------------------
 // Constructor & Destructor
 // ------------------------------------------------------------------
 UDashAbility::UDashAbility()
 {
-	bIsSliding      = false;
 	ImpulseStrength = 2500.0f;
 	
 	SlideBrakingDeceleration  = 100.f;	
@@ -36,7 +36,7 @@ UDashAbility::UDashAbility()
 // ------------------------------------------------------------------
 bool UDashAbility::Activate()
 {
-	if (!Super::Activate() || bIsSliding)
+	if (!Super::Activate())
 		return false;
 	
 	const TObjectPtr<ABaseCharacter> Owner      = GetTypedOuter<ABaseCharacter>(); 
@@ -45,7 +45,6 @@ bool UDashAbility::Activate()
 	const float    ControlYaw = Controller ? Controller->GetControlRotation().Yaw : Owner->GetActorRotation().Yaw;
 	const FRotator YawRotation(0.f, ControlYaw, 0.f);
 	const FVector  Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	const FVector  Right = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
 	const FVector LaunchVelocity(
 	   Forward.X * ImpulseStrength,
@@ -58,11 +57,10 @@ bool UDashAbility::Activate()
 	
 	if (MovementComponent->IsMovingOnGround())
 	{
-		GroundFriction  = MovementComponent->GroundFriction;
-		BrakingDecelerationWalking = MovementComponent->BrakingDecelerationWalking;
-		BrakingFriction = MovementComponent->BrakingFriction;
-		MaxAcceleration = MovementComponent->MaxAcceleration;
-		GravityScale    = MovementComponent->GravityScale;
+		WalkBrakingDeceleration = MovementComponent->BrakingDecelerationWalking;
+		WalkBrakingFriction     = MovementComponent->BrakingFriction;
+		WalkGroundFriction      = MovementComponent->GroundFriction;
+		WalkMaxAcceleration     = MovementComponent->MaxAcceleration;
 		
 		MovementComponent->BrakingDecelerationWalking = SlideBrakingDeceleration;
 		MovementComponent->BrakingFriction = SlideBrakingFriction;
@@ -83,15 +81,13 @@ bool UDashAbility::Activate()
 // ------------------------------------------------------------------
 // Internal Methods
 // ------------------------------------------------------------------
-void UDashAbility::EndSlide()
+void UDashAbility::EndSlide() const
 {
-	bIsSliding = false;
-	
 	const TObjectPtr<ABaseCharacter> Owner = GetTypedOuter<ABaseCharacter>(); 
 	const TObjectPtr<UCharacterMovementComponent> MovementComponent = Owner->GetCharacterMovement();
 	
-	MovementComponent->BrakingDecelerationWalking = BrakingDecelerationWalking;
-	MovementComponent->BrakingFriction = BrakingFriction;
-	MovementComponent->GroundFriction  = GroundFriction;
-	MovementComponent->MaxAcceleration = MaxAcceleration;
+	MovementComponent->BrakingDecelerationWalking = WalkBrakingDeceleration;
+	MovementComponent->BrakingFriction            = WalkBrakingFriction;
+	MovementComponent->GroundFriction             = WalkGroundFriction;
+	MovementComponent->MaxAcceleration            = WalkMaxAcceleration;
 }

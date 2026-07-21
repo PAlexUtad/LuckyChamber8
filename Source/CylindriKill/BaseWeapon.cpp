@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "BaseGun.h"
+#include "BaseWeapon.h"
 
 #include "BaseProjectile.h"
 #include "Camera/CameraComponent.h"
@@ -13,7 +13,7 @@
 #include "TimerManager.h"
 
 // Sets default values
-ABaseGun::ABaseGun()
+ABaseWeapon::ABaseWeapon()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -28,7 +28,7 @@ ABaseGun::ABaseGun()
 	BodyMesh->SetupAttachment(RootComponent);
 }
 
-void ABaseGun::BeginPlay()
+void ABaseWeapon::BeginPlay()
 {
 	Super::BeginPlay();
     
@@ -51,7 +51,7 @@ void ABaseGun::BeginPlay()
 }
 
 // Called every frame
-void ABaseGun::Tick(float DeltaTime)
+void ABaseWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	// Inside Tick(float DeltaTime):
@@ -111,7 +111,7 @@ void ABaseGun::Tick(float DeltaTime)
 }
 
 
-void ABaseGun::StartParry()
+void ABaseWeapon::StartParry()
 {
 	if (!bCanParry || bIsParrying) return;
 
@@ -125,14 +125,14 @@ void ABaseGun::StartParry()
 		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Parry Active!"));
 	}
 	// End parry window after short duration
-	GetWorldTimerManager().SetTimer(ParryTimerHandle, this, &ABaseGun::EndParry, ParryDuration, false);
+	GetWorldTimerManager().SetTimer(ParryTimerHandle, this, &ABaseWeapon::EndParry, ParryDuration, false);
 }
 
-void ABaseGun::StopParry()
+void ABaseWeapon::StopParry()
 {
     // Optional early release logic if needed
 }
-void ABaseGun::AddCylinderScrollInput(float ScrollValue)
+void ABaseWeapon::AddCylinderScrollInput(float ScrollValue)
 {
 	if (NumCylinderChambers <= 0) return;
 
@@ -148,7 +148,7 @@ void ABaseGun::AddCylinderScrollInput(float ScrollValue)
 	// short way forward/backward instead of snapping backward through 315° when wrapping past 0.
 	TargetCylinderSpinDegrees += Direction * StepDegrees;
 }
-void ABaseGun::PerformParryTrace()
+void ABaseWeapon::PerformParryTrace()
 {
 	const APawn* OwningPawn = Cast<APawn>(GetOwner());
 	const UCameraComponent* AimCamera = OwningPawn ? OwningPawn->FindComponentByClass<UCameraComponent>() : nullptr;
@@ -199,17 +199,17 @@ void ABaseGun::PerformParryTrace()
 	}
 }
 
-void ABaseGun::EndParry()
+void ABaseWeapon::EndParry()
 {
 	bIsParrying = false;
 	TargetBarrelRotation = FRotator::ZeroRotator; // Close barrel animation
 	TargetCylinderSlideLocation = CylinderBaseLoc; // Slide cylinder back in
 
 	// Start cooldown
-	GetWorldTimerManager().SetTimer(ParryCooldownTimerHandle, this, &ABaseGun::ResetParryCooldown, ParryCooldown, false);
+	GetWorldTimerManager().SetTimer(ParryCooldownTimerHandle, this, &ABaseWeapon::ResetParryCooldown, ParryCooldown, false);
 }
 
-void ABaseGun::AddAmmo()
+void ABaseWeapon::AddAmmo()
 {
 	// 1. First pass: Look for empty chambers (Tier 0) and fill them with Tier 1
 	for (int32 i = 0; i < ChamberTiers.Num(); ++i)
@@ -244,12 +244,12 @@ void ABaseGun::AddAmmo()
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Orange, TEXT("All chambers at Max Tier!"));
 }
 
-void ABaseGun::ResetParryCooldown()
+void ABaseWeapon::ResetParryCooldown()
 {
     bCanParry = true;
 }
 
-void ABaseGun::StartFire()
+void ABaseWeapon::StartFire()
 {
 	// Default behaviour is semi-automatic: one trace per press.
 	// Automatic weapons can override this to kick off a repeating timer instead.
@@ -257,13 +257,13 @@ void ABaseGun::StartFire()
 	Fire();
 }
 
-void ABaseGun::StopFire()
+void ABaseWeapon::StopFire()
 {
 	// No-op for semi-auto guns. Automatic-weapon subclasses should clear their
 	// repeating fire timer here.
 }
 
-void ABaseGun::Fire()
+void ABaseWeapon::Fire()
 {
     GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("ABaseGun FIRE!"));
 
@@ -339,10 +339,10 @@ void ABaseGun::Fire()
     TargetRecoilRotation.Pitch += RecoilKickPitch;
 
     bCanFire = false;
-    GetWorldTimerManager().SetTimer(FireCooldownTimerHandle, this, &ABaseGun::ResetFireCooldown, FireRate, false);
+    GetWorldTimerManager().SetTimer(FireCooldownTimerHandle, this, &ABaseWeapon::ResetFireCooldown, FireRate, false);
 }
 
-void ABaseGun::ResetFireCooldown()
+void ABaseWeapon::ResetFireCooldown()
 {
 	bCanFire = true;
 }

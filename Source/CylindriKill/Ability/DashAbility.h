@@ -21,13 +21,10 @@ class CYLINDRIKILL_API UDashAbility : public UBaseAbility
 	// ------------------------------------------------------------------
 	// Internal Methods
 	// ------------------------------------------------------------------
-	bool bIsSliding;
-	
-	float BrakingDecelerationWalking;
-	float BrakingFriction;
-	float GravityScale;
-	float GroundFriction;
-	float MaxAcceleration;
+	float WalkBrakingDeceleration;
+	float WalkBrakingFriction;
+	float WalkGroundFriction;
+	float WalkMaxAcceleration;
 	
 	FTimerHandle SlideTimerHandle;
 
@@ -69,5 +66,5 @@ private:
 	// ------------------------------------------------------------------
 	// Internal Methods
 	// ------------------------------------------------------------------
-	void EndSlide();
+	void EndSlide() const;
 };

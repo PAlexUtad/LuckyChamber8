@@ -15,8 +15,8 @@
 #include "BaseCharacter.generated.h"
 
 class UBaseAbility;
-class UPaperSpriteComponent;
 class UHealthComponent;
+class UPaperSpriteComponent;
 
 UCLASS(CollapseCategories)
 class CYLINDRIKILL_API ABaseCharacter : public ACharacter
@@ -31,11 +31,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Instanced, meta = (AllowPrivateAccess = "true")) // <- Added comma before meta
 	TArray<TObjectPtr<UBaseAbility>> Abilities;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gameplay|Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHealthComponent> HealthComponent;
 	
 	// TODO: Remove this field once a default mesh has been implemented.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gameplay|Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPaperSpriteComponent> SpriteComponent;
 	
 public:

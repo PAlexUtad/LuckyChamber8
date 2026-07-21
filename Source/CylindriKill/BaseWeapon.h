@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "BaseGun.generated.h"
+#include "BaseWeapon.generated.h"
 
 UCLASS()
-class CYLINDRIKILL_API ABaseGun : public AActor
+class CYLINDRIKILL_API ABaseWeapon : public AActor
 {
 	GENERATED_BODY()
 	
 public: 
 	// Sets default values for this actor's properties
-	ABaseGun();
+	ABaseWeapon();
 
 	// -------------------------------------------------------------
 	// Firing (called by the player, forwarded down from input)
