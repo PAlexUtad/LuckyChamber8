@@ -20,14 +20,14 @@
 // ------------------------------------------------------------------
 ABaseCharacter::ABaseCharacter()
 {
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	HealthComponent->MaxHealth = 1.f;
+	
 	PrimaryActorTick.bCanEverTick = true;
 	
 	SpriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteComponent"));
 	SpriteComponent->SetupAttachment(RootComponent);
 	SpriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
-	HealthComponent->MaxHealth = 1.f;
 }
 
 // ------------------------------------------------------------------
@@ -50,6 +50,7 @@ void ABaseCharacter::Tick(const float DeltaTime)
 // ------------------------------------------------------------------
 void ABaseCharacter::Die(AActor* Aggressor)
 {
+	// TODO: Swap for a respawn/game-over flow.
 	// TODO: Take death animation into account with a delay before destroying the character.
 	Destroy();
 }
