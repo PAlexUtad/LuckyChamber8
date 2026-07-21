@@ -14,28 +14,35 @@
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
+class UBaseAbility;
 class UPaperSpriteComponent;
 class UHealthComponent;
 
-UCLASS()
+UCLASS(CollapseCategories)
 class CYLINDRIKILL_API ABaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
-
+	
 protected:
 	
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Instanced, meta = (AllowPrivateAccess = "true")) // <- Added comma before meta
+	TArray<TObjectPtr<UBaseAbility>> Abilities;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gameplay|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHealthComponent> HealthComponent;
 	
 	// TODO: Remove this field once a default mesh has been implemented.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gameplay|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPaperSpriteComponent> SpriteComponent;
 	
 public:
 
+	// ------------------------------------------------------------------
+	// Constructor & Destructor
+	// ------------------------------------------------------------------
 	ABaseCharacter();
 	
 	// ------------------------------------------------------------------
@@ -49,6 +56,7 @@ protected:
 	// ------------------------------------------------------------------
 	// Blueprintable Methods
 	// ------------------------------------------------------------------
-	UFUNCTION() virtual void Spawn();
-	UFUNCTION() virtual void Die(AActor* Aggressor);
+	UFUNCTION(BlueprintCallable) virtual void Die(AActor* Aggressor);
+	UFUNCTION(BlueprintCallable) virtual void ActivateAbility(const TSubclassOf<UBaseAbility> AbilityClass);
+	UFUNCTION(BlueprintCallable) virtual UBaseAbility* FindAbility(const TSubclassOf<UBaseAbility> AbilityClass);
 };

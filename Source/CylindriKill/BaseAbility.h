@@ -1,40 +1,48 @@
-﻿#pragma once
+﻿// 
+// BaseAbility.h
+// 
+// Parent class for all (both enemy & player) abilities.
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
 
-#include "BaseCharacter.h"
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/TimerHandle.h"
+#include "UObject/Object.h"
 #include "BaseAbility.generated.h"
 
-UCLASS(Blueprintable, BlueprintType, DefaultToInstanced, EditInlineNew)
-class CYLINDRIKILL_API UBaseAbility : public UActorComponent
+UCLASS(EditInlineNew, Blueprintable, BlueprintType)
+class CYLINDRIKILL_API UBaseAbility : public UObject
 {
 	GENERATED_BODY()
-	
-protected:
-	
+    
 	// ------------------------------------------------------------------
 	// Internal Variables
 	// ------------------------------------------------------------------
-	bool         bCanTrigger;
-	FTimerHandle CooldownTimer;
-
-	TWeakObjectPtr<ABaseCharacter> Parent;
-	
+	FTimerHandle CooldownTimerHandle;
+    
+protected:
+    
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
-	float CooldownDuration;
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay|Ability")
+	float CooldownTime;
+    
 public:
-	
+    
 	// ------------------------------------------------------------------
 	// Constructor & Destructor
 	// ------------------------------------------------------------------
 	UBaseAbility();
-	
+    
 	// ------------------------------------------------------------------
-	// Overridden Methods
+	// Exposed Methods
 	// ------------------------------------------------------------------
-	virtual void BeginAbility();
-	virtual void TickAbility(float);
-	virtual void EndAbility();
+	virtual bool Activate();
+	virtual bool IsOnCooldown() const;
 };

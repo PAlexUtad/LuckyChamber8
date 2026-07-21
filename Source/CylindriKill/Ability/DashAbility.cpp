@@ -1,109 +1,97 @@
-﻿
+﻿// 
+// DashAbility.h
+// 
+// Implementation of the 'DashAbility' class.
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
+
 #include "DashAbility.h"
 
-#include "CylindriKill/BaseCharacter.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
+#include "CylindriKill/BaseCharacter.h"
+#include "Engine/Engine.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
+class ABaseCharacter;
+// ------------------------------------------------------------------
+// Constructor & Destructor
+// ------------------------------------------------------------------
 UDashAbility::UDashAbility()
-{	
-	CooldownDuration = 0.75f;
-	ImpulseStrength  = 2500.0f;
+{
+	bIsSliding      = false;
+	ImpulseStrength = 2500.0f;
 	
-	SlideBrakingDeceleration = 100.0f;
-	SlideBrakingFriction     = 0.0f;
-	SlideCameraDropAmount    = 40.0f;
-	SlideCameraInterpSpeed   = -65.0f;
-	SlideCameraOffset        = 0.0f;
-	SlideDuration            = 0.75f;
-	SlideGunInterpSpeed      = 10.0f;
-	SlideGunPitchDegree      = -65.0f;
-	SlideGunRotationOffset   = FRotator::ZeroRotator;
-	SlideGroundFriction      = 0.1f;
-	SlideMaxAcceleration     = 500.0f;
-	
-	if (Parent.Get())
-		MovementComponent = Parent->GetCharacterMovement();
+	SlideBrakingDeceleration  = 100.f;	
+	SlideBrakingFriction      = 0.0f;
+	SlideDuration             = 0.75f;
+	SlideGroundFriction       = 0.1f;
+	SlideMaxAcceleration      = 500.f;
 }
 
-void UDashAbility::BeginAbility()
+// ------------------------------------------------------------------
+// Exposed Methods
+// ------------------------------------------------------------------
+bool UDashAbility::Activate()
 {
-	Super::BeginAbility();
+	if (!Super::Activate() || bIsSliding)
+		return false;
 	
-	if (!bCanTrigger || !Parent->GetCharacterMovement())
-		return;
+	const TObjectPtr<ABaseCharacter> Owner      = GetTypedOuter<ABaseCharacter>(); 
+	const TObjectPtr<AController>    Controller = Owner->GetController();
 	
-	const TObjectPtr<AController> Controller = Parent->GetController();
-	const FRotator ActorRotation = Parent->GetActorRotation();
-	
-	const float    ControlYaw = Controller ? Controller->GetControlRotation().Yaw : ActorRotation.Yaw;
+	const float    ControlYaw = Controller ? Controller->GetControlRotation().Yaw : Owner->GetActorRotation().Yaw;
 	const FRotator YawRotation(0.f, ControlYaw, 0.f);
 	const FVector  Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	const FVector  Right   = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-	
-	FVector SlideDirection;
-	
-	if (!LastMoveInput.IsNearlyZero())
-		SlideDirection = (Forward * LastMoveInput.Y + Right * LastMoveInput.X).GetSafeNormal();
-	else
-		SlideDirection = Forward;
-	
-	SlideDirection.Z = 0.f;
-	SlideDirection.Normalize();
-	
-	const FVector LaunchVelocity(
-	   SlideDirection.X * ImpulseStrength,
-	   SlideDirection.Y * ImpulseStrength,
-	   MovementComponent->Velocity.Z + 200.f);
+	const FVector  Right = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-	Parent->LaunchCharacter(LaunchVelocity, true, false);
+	const FVector LaunchVelocity(
+	   Forward.X * ImpulseStrength,
+	   Forward.Y * ImpulseStrength,
+	   Owner->GetCharacterMovement()->Velocity.Z + 200.f);
+	
+	Owner->LaunchCharacter(LaunchVelocity, true, true);
+	
+	const TObjectPtr<UCharacterMovementComponent> MovementComponent = Owner->GetCharacterMovement();
 	
 	if (MovementComponent->IsMovingOnGround())
 	{
-		MovementComponent->GroundFriction = SlideGroundFriction;
+		GroundFriction  = MovementComponent->GroundFriction;
+		BrakingDecelerationWalking = MovementComponent->BrakingDecelerationWalking;
+		BrakingFriction = MovementComponent->BrakingFriction;
+		MaxAcceleration = MovementComponent->MaxAcceleration;
+		GravityScale    = MovementComponent->GravityScale;
+		
 		MovementComponent->BrakingDecelerationWalking = SlideBrakingDeceleration;
 		MovementComponent->BrakingFriction = SlideBrakingFriction;
+		MovementComponent->GroundFriction  = SlideGroundFriction;
 		MovementComponent->MaxAcceleration = SlideMaxAcceleration;
-	} 
+	}
 	
-	bIsSliding = true;
-	
-	Parent->GetWorldTimerManager().SetTimer(
+	GetWorld()->GetTimerManager().SetTimer(
 	   SlideTimerHandle,
 	   this,
-	   &UDashAbility::EndAbility,
+	   &UDashAbility::EndSlide,
 	   SlideDuration,
 	   false);
+	
+	return true;
 }
 
-void UDashAbility::TickAbility(float DeltaTime)
+// ------------------------------------------------------------------
+// Internal Methods
+// ------------------------------------------------------------------
+void UDashAbility::EndSlide()
 {
-	Super::TickAbility(DeltaTime);
-	
-	/*
-    const float TargetCameraSlideOffset = bIsSliding ? -SlideCameraDropAmount : 0.f;
-    CurrentSlideCameraOffset = FMath::FInterpTo(
-       CurrentSlideCameraOffset, TargetCameraSlideOffset, DeltaTime, SlideCameraInterpSpeed);
-
-    const FRotator TargetGunSlideRotation = bIsSliding ? FRotator(SlideGunPitchDegrees, 0.f, 0.f) : FRotator::ZeroRotator;
-    CurrentGunSlideRotationOffset = FMath::RInterpTo(
-       CurrentGunSlideRotationOffset, TargetGunSlideRotation, DeltaTime, SlideGunInterpSpeed);
-
-    if (IsValid(GunChildComponent))
-    {
-       GunChildComponent->SetRelativeRotation(GunBaseRelativeRotation + CurrentGunSlideRotationOffset);
-    }
-	*/
-}
-
-void UDashAbility::EndAbility()
-{
-	Super::EndAbility();
-	
 	bIsSliding = false;
 	
-	MovementComponent->GroundFriction = 0.0f;
-	MovementComponent->BrakingDecelerationWalking = 0.0f;
-	MovementComponent->BrakingFriction = 0.0f;
-	MovementComponent->MaxAcceleration = 0.0f;
+	const TObjectPtr<ABaseCharacter> Owner = GetTypedOuter<ABaseCharacter>(); 
+	const TObjectPtr<UCharacterMovementComponent> MovementComponent = Owner->GetCharacterMovement();
+	
+	MovementComponent->BrakingDecelerationWalking = BrakingDecelerationWalking;
+	MovementComponent->BrakingFriction = BrakingFriction;
+	MovementComponent->GroundFriction  = GroundFriction;
+	MovementComponent->MaxAcceleration = MaxAcceleration;
 }
