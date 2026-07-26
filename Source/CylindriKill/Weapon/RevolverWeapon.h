@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CylindriKill/BaseGun.h"
+#include "CylindriKill/BaseWeapon.h"
 #include "RevolverWeapon.generated.h"
 
 /**
@@ -11,7 +11,7 @@
  * both loaded directly from disk in the constructor.
  */
 UCLASS()
-class CYLINDRIKILL_API ARevolverWeapon : public ABaseGun
+class CYLINDRIKILL_API ARevolverWeapon : public ABaseWeapon
 {
 	GENERATED_BODY()
 

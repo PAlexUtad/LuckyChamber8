@@ -1,4 +1,13 @@
-﻿
+﻿// 
+// DashAbility.h
+// 
+// Simple dash + slide ability.
+// 
+// ----------------------------------------  x  ---------------------------------------- 
+// 
+// © 2026 CylindriKill. All rights reserved.
+// 
+
 #pragma once
 
 #include "CylindriKill/BaseAbility.h"
@@ -10,47 +19,34 @@ class CYLINDRIKILL_API UDashAbility : public UBaseAbility
 	GENERATED_BODY()
 	
 	// ------------------------------------------------------------------
-	// Internal Variables
+	// Internal Methods
 	// ------------------------------------------------------------------
-	bool         bIsSliding;
-	float        SlideCameraOffset;
-	FRotator     SlideGunRotationOffset;
+	float WalkBrakingDeceleration;
+	float WalkBrakingFriction;
+	float WalkGroundFriction;
+	float WalkMaxAcceleration;
+	
 	FTimerHandle SlideTimerHandle;
-	FVector2D    LastMoveInput;
-	
-	TWeakObjectPtr<UCharacterMovementComponent> MovementComponent;
-	
+
 	// ------------------------------------------------------------------
 	// Blueprint Variables
 	// ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float ImpulseStrength;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideBrakingDeceleration;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideBrakingFriction;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
-	float SlideCameraDropAmount;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
-	float SlideCameraInterpSpeed;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideDuration;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideGroundFriction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
-	float SlideGunInterpSpeed;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
-	float SlideGunPitchDegree;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability|Dash", Meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess = true))
 	float SlideMaxAcceleration;
 	
 public:
@@ -61,9 +57,14 @@ public:
 	UDashAbility();
 	
 	// ------------------------------------------------------------------
-	// Overridden Methods
+	// Exposed Methods
 	// ------------------------------------------------------------------
-	virtual void BeginAbility() override;
-	virtual void TickAbility(float) override;
-	virtual void EndAbility() override;
+	virtual bool Activate() override;
+	
+private:
+	
+	// ------------------------------------------------------------------
+	// Internal Methods
+	// ------------------------------------------------------------------
+	void EndSlide() const;
 };
