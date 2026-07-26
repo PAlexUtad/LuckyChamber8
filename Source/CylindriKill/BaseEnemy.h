@@ -6,6 +6,8 @@
 #include "Runtime/AIModule/Classes/AIController.h"
 #include "BaseEnemy.generated.h"
 
+// Forward Declaration
+class UFloatingTextWidget;
 
 UCLASS()
 class CYLINDRIKILL_API ABaseEnemy : public ACharacter
@@ -17,6 +19,9 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintCallable, category = "Pooling|Damage")
+	void SpawnDamageText(float _, float MaxHealth, float DamageAmount);
 
 protected:
 	virtual void BeginPlay() override;
@@ -57,7 +62,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void StopNavMovement();
 
-
 	/** If the player is farther than this, the enemy goes fully dormant - no movement, no shooting, no facing. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float MaxActivationRange = 4000.f;
@@ -65,6 +69,16 @@ protected:
 	/** True if the player is currently within MaxActivationRange (cheap to check, cached once per tick). */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	bool IsPlayerInRange() const;
+
 private:
 	void RotateToFacePlayer(float DeltaTime);
+
+	UPROPERTY()
+	TArray<UFloatingTextWidget*> DamageWidgetPool;
+
+	UPROPERTY(EditDefaultsOnly, category = "Damage UI")
+	uint8 MaxDamageWidgets;
+
+	UPROPERTY(EditDefaultsOnly, category = "Damage UI")
+	TSubclassOf<UFloatingTextWidget> DamageWidgetClass;
 };

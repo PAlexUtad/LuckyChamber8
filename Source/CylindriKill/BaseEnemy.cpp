@@ -4,6 +4,7 @@
 
 #include "BaseProjectile.h"
 #include "CylindriKill/Component/HealthComponent.h"
+#include "CylindriKill/UI/HUD/FloatingTextWidget.h"
 #include "TimerManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -11,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
 #include "Runtime/AIModule/Classes/AIController.h"
+#include <Internationalization/Text.h>
 
 ABaseEnemy::ABaseEnemy()
 {
@@ -45,6 +47,13 @@ ABaseEnemy::ABaseEnemy()
 
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	MaxDamageWidgets = 8;
+	static ConstructorHelpers::FClassFinder<UFloatingTextWidget> DamageTextWidgetAsset(TEXT("WidgetBlueprint'/Game/Blueprints/UI/HUD/WBP_FloatingText_Damage.WBP_FloatingText_Damage_C'"));
+	if (DamageTextWidgetAsset.Succeeded())
+	{
+		DamageWidgetClass = DamageTextWidgetAsset.Class;
+	}
 }
 
 void ABaseEnemy::BeginPlay()
@@ -54,11 +63,27 @@ void ABaseEnemy::BeginPlay()
 	if (HealthComponent)
 	{
 		HealthComponent->OnDeath.AddDynamic(this, &ABaseEnemy::HandleDeath);
+		HealthComponent->OnHealthChanged.AddDynamic(this, &ABaseEnemy::SpawnDamageText);
 	}
 
 	if (GetWorld() && ProjectileClass)
 	{
 		GetWorldTimerManager().SetTimer(FireTimerHandle, this, &ABaseEnemy::FireAtPlayer, ShootInterval, true);
+	}
+
+
+	if (DamageWidgetClass)
+	{
+		for (size_t i = 0; i < MaxDamageWidgets; i++) 
+		{
+			UFloatingTextWidget* CreatedWidget = CreateWidget<UFloatingTextWidget>(GetWorld(), DamageWidgetClass);
+
+			if (CreatedWidget)
+			{
+				CreatedWidget->AddToViewport();
+			}
+			DamageWidgetPool.Add(CreatedWidget);
+		}
 	}
 }
 
@@ -136,6 +161,16 @@ float ABaseEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent
 
 	return ActualDamage;
 }
+
+void ABaseEnemy::SpawnDamageText(float _, float MaxHealth, float DamageAmount)
+{
+	DamageWidgetPool[0]->ActivateText(FText::FromString(FString::SanitizeFloat(DamageAmount)), DamageAmount / MaxHealth > 0.3f ? FLinearColor::Red : FLinearColor::Yellow);
+	for (size_t i = 0; i < MaxDamageWidgets - 2; i++) 
+	{ 
+		DamageWidgetPool.SwapMemory(i, i+1); 
+	}
+}
+
 void ABaseEnemy::HandleDeath(AActor* DamageCauser)
 {
 	if (GEngine)
