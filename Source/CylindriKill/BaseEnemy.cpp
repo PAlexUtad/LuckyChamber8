@@ -48,7 +48,7 @@ ABaseEnemy::ABaseEnemy()
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
-	MaxDamageWidgets = 8;
+	MaxDamageWidgets = 4;
 	static ConstructorHelpers::FClassFinder<UFloatingTextWidget> DamageTextWidgetAsset(TEXT("WidgetBlueprint'/Game/Blueprints/UI/HUD/WBP_FloatingText_Damage.WBP_FloatingText_Damage_C'"));
 	if (DamageTextWidgetAsset.Succeeded())
 	{
