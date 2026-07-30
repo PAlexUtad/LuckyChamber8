@@ -4,7 +4,7 @@
 
 #include "BaseProjectile.h"
 #include "CylindriKill/Component/HealthComponent.h"
-#include "CylindriKill/UI/HUD/FloatingTextWidget.h"
+#include "CylindriKill/Component/HitWidgetComponent.h" 
 #include "TimerManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,6 +13,7 @@
 #include "Engine/Engine.h"
 #include "Runtime/AIModule/Classes/AIController.h"
 #include <Internationalization/Text.h>
+#include <Engine/DamageEvents.h> // FDamageEvent
 
 ABaseEnemy::ABaseEnemy()
 {
@@ -45,15 +46,12 @@ ABaseEnemy::ABaseEnemy()
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->MaxHealth = 1.f; // preserves the old one-shot-kill feel; raise on a per-enemy Blueprint for tankier types
 
+	DamageWidgetComponent = CreateDefaultSubobject<UHitWidgetComponent>(TEXT("HitWidgetComponent"));
+	DamageWidgetComponent->SetupAttachment(RootComponent);
+	DamageWidgetComponent->SetRelativeLocation(FVector(10.f, 0.f, 0.f));
+
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-
-	MaxDamageWidgets = 4;
-	static ConstructorHelpers::FClassFinder<UFloatingTextWidget> DamageTextWidgetAsset(TEXT("WidgetBlueprint'/Game/Blueprints/UI/HUD/WBP_FloatingText_Damage.WBP_FloatingText_Damage_C'"));
-	if (DamageTextWidgetAsset.Succeeded())
-	{
-		DamageWidgetClass = DamageTextWidgetAsset.Class;
-	}
 }
 
 void ABaseEnemy::BeginPlay()
@@ -63,27 +61,12 @@ void ABaseEnemy::BeginPlay()
 	if (HealthComponent)
 	{
 		HealthComponent->OnDeath.AddDynamic(this, &ABaseEnemy::HandleDeath);
-		HealthComponent->OnHealthChanged.AddDynamic(this, &ABaseEnemy::SpawnDamageText);
+		HealthComponent->OnHealthChanged.AddDynamic(DamageWidgetComponent, &UHitWidgetComponent::SpawnDamageText);
 	}
 
 	if (GetWorld() && ProjectileClass)
 	{
 		GetWorldTimerManager().SetTimer(FireTimerHandle, this, &ABaseEnemy::FireAtPlayer, ShootInterval, true);
-	}
-
-
-	if (DamageWidgetClass)
-	{
-		for (size_t i = 0; i < MaxDamageWidgets; i++) 
-		{
-			UFloatingTextWidget* CreatedWidget = CreateWidget<UFloatingTextWidget>(GetWorld(), DamageWidgetClass);
-
-			if (CreatedWidget)
-			{
-				CreatedWidget->AddToViewport();
-			}
-			DamageWidgetPool.Add(CreatedWidget);
-		}
 	}
 }
 
@@ -160,15 +143,6 @@ float ABaseEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent
 	}
 
 	return ActualDamage;
-}
-
-void ABaseEnemy::SpawnDamageText(float _, float MaxHealth, float DamageAmount)
-{
-	DamageWidgetPool[0]->ActivateText(FText::FromString(FString::SanitizeFloat(DamageAmount)), DamageAmount / MaxHealth > 0.3f ? FLinearColor::Red : FLinearColor::Yellow);
-	for (size_t i = 0; i < MaxDamageWidgets - 2; i++) 
-	{ 
-		DamageWidgetPool.SwapMemory(i, i+1); 
-	}
 }
 
 void ABaseEnemy::HandleDeath(AActor* DamageCauser)

@@ -9,9 +9,6 @@ void UFloatingTextWidget::NativeConstruct()
 	UUserWidget::SetVisibility(ESlateVisibility::Collapsed);
 
 	AnimationTime = 0.75f;
-	EndSize = 0.35f;
-	TweenFnc = EEasingFunction::None;
-	TweenType = EasingType::None;
 }
 
 void UFloatingTextWidget::FadeOutEnd()
@@ -32,5 +29,5 @@ void UFloatingTextWidget::ActivateText(const FText& Text, const FLinearColor& Co
 	DamageText->SetText(Text);
 	DamageText->SetColorAndOpacity(FSlateColor(Color));
 	UUserWidget::SetVisibility(ESlateVisibility::Visible);
-	PlayAnimation(FadeOutAnim);
+	PlayAnimation(FadeOutAnim, 0.f, 1, EUMGSequencePlayMode::Forward, 1.f / AnimationTime);
 }

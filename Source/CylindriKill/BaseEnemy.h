@@ -7,7 +7,7 @@
 #include "BaseEnemy.generated.h"
 
 // Forward Declaration
-class UFloatingTextWidget;
+class UHitWidgetComponent;
 
 UCLASS()
 class CYLINDRIKILL_API ABaseEnemy : public ACharacter
@@ -20,9 +20,6 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-	UFUNCTION(BlueprintCallable, category = "Pooling|Damage")
-	void SpawnDamageText(float _, float MaxHealth, float DamageAmount);
-
 protected:
 	virtual void BeginPlay() override;
 
@@ -31,6 +28,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UHealthComponent> HealthComponent;
+
+	// The component that holds and renders the widget in 3D space
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHitWidgetComponent> DamageWidgetComponent;
 
 	UFUNCTION()
 	void HandleDeath(AActor* DamageCauser);
@@ -72,13 +73,4 @@ protected:
 
 private:
 	void RotateToFacePlayer(float DeltaTime);
-
-	UPROPERTY()
-	TArray<UFloatingTextWidget*> DamageWidgetPool;
-
-	UPROPERTY(EditDefaultsOnly, category = "Damage UI")
-	uint8 MaxDamageWidgets;
-
-	UPROPERTY(EditDefaultsOnly, category = "Damage UI")
-	TSubclassOf<UFloatingTextWidget> DamageWidgetClass;
 };

@@ -48,15 +48,6 @@ class CYLINDRIKILL_API UFloatingTextWidget : public UUserWidget
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	float AnimationTime;
 
-	UPROPERTY(EditAnywhere, Category = "Animation", meta = (ClampMin = 0.01f, ClampMax = 0.5f, ToolTip = "Minimum size in relation to starting size."))
-	float EndSize;
-
-	UPROPERTY(EditAnywhere, Category = "Animation|Tweening")
-	EEasingFunction TweenFnc;
-
-	UPROPERTY(EditAnywhere, Category = "Animation|Tweening", meta = (EditCondition = "TweenFnc != EEasingFunction::None && TweenFnc != EEasingFunction::Linear"))
-	EasingType TweenType;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* DamageText;
 
