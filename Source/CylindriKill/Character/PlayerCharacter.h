@@ -35,15 +35,12 @@ class CYLINDRIKILL_API APlayerCharacter : public ABaseCharacter
 	// ------------------------------------------------------------------
 	// Internal Variables
 	// ------------------------------------------------------------------
-	bool     bIsWallSliding = false;
 	float    BobCycleTime = 0.f;
 	FVector  CameraBaseRelativeLocation = FVector::ZeroVector;
 	FVector  CurrentBobOffset = FVector::ZeroVector;
 	float    CurrentCameraRollOffset = 0.f;
 	FRotator CurrentGunSlideRotationOffset = FRotator::ZeroRotator;
 	float    CurrentSlideCameraOffset = 0.f;
-	FVector  CurrentWallNormal = FVector::ZeroVector;
-	float    WallJumpCooldownRemaining = 0.f;
 	FVector  WeaponRelativeLocation = FVector::ZeroVector;
 	FRotator WeaponRelativeRotation = FRotator::ZeroRotator;
 	
@@ -103,33 +100,6 @@ class CYLINDRIKILL_API APlayerCharacter : public ABaseCharacter
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
     float SlideWeaponPitchDegrees;
-    
-    // ------------------------------------------------------------------
-    // Wall Slide
-    // ------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-	bool bDrawDebugWallTrace;
-	
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-    float WallJumpAwayStrength;
-	
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-    float WallJumpReattachCooldown;
-	
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-    float WallJumpUpStrength;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-	float WallSlideCameraRollDegrees;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-	float WallSlideCameraRollInterpSpeed;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-	float WallSlideGravityScale;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay", Meta = (AllowPrivateAccess = "true"))
-	float WallTraceDistance;
 	
 public:
     
@@ -159,13 +129,10 @@ private:
 public:
     
 	// TODO: Shit functions that shouldn't be in the PlayerCharacter.
-	bool DetectWall(FVector& OutWallNormal) const;
 	void PlayShootCameraShake() const;
 	void UpdateCameraBob(const float DeltaTime);
 	void UpdateCameraRotation(const float DeltaTime) const;
 	void UpdateSlideVisuals(const float DeltaTime);
-	void UpdateWallSlide(const float DeltaTime);
-	void WallJump();
 	
 	// ------------------------------------------------------------------
 	// Getters & Setters

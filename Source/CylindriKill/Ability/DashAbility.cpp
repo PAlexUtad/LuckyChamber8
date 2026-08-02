@@ -15,8 +15,6 @@
 #include "Engine/Engine.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-class ABaseCharacter;
-
 // ------------------------------------------------------------------
 // Constructor & Destructor
 // ------------------------------------------------------------------

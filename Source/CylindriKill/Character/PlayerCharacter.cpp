@@ -18,7 +18,6 @@
 #include "CylindriKill/Ability/DashAbility.h"
 #include "CylindriKill/BaseWeapon.h"
 #include "CylindriKill/Component/HealthComponent.h"
-#include "DrawDebugHelpers.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "EnhancedInputComponent.h"
@@ -26,6 +25,7 @@
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
 #include "TimerManager.h"
+#include "CylindriKill/Ability/WallSlideAbility.h"
 #include "Util/LoggerUtil.h"
 
 // ------------------------------------------------------------------
@@ -83,15 +83,6 @@ APlayerCharacter::APlayerCharacter()
 	
     WeaponComponent = CreateDefaultSubobject<UChildActorComponent>(TEXT("WeaponComponent"));
     WeaponComponent->SetupAttachment(CameraComponent);
-	
-	bDrawDebugWallTrace = false;
-	WallJumpAwayStrength = 900.f;
-	WallJumpReattachCooldown = 0.3f;
-	WallJumpUpStrength = 700.f;
-	WallSlideCameraRollDegrees = 15.f;
-	WallSlideCameraRollInterpSpeed = 10.f;
-	WallSlideGravityScale = 0.3f;
-	WallTraceDistance = 60.f;
 }
 
 // ------------------------------------------------------------------
@@ -155,19 +146,30 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	TObjectPtr<UWallSlideAbility> WallSlideAbility = FindAbility<UWallSlideAbility>();
 
 	UpdateSlideVisuals(DeltaTime);
 	UpdateCameraBob(DeltaTime);
-	UpdateWallSlide(DeltaTime);
+	
+	if (WallSlideAbility)
+	{
+		const float TargetRoll = WallSlideAbility->UpdateWallSlide(DeltaTime);
+		CurrentCameraRollOffset = FMath::FInterpTo(CurrentCameraRollOffset, TargetRoll, DeltaTime, 
+			WallSlideAbility->GetWallSlideCameraRollInterpSpeed());
+	}
+	
 	UpdateCameraRotation(DeltaTime);
 }
 
 void APlayerCharacter::Jump()
 {
 	// TODO: If we are currently sliding, cancel the slide immediately on jump press.
-	if (bIsWallSliding)
+	TObjectPtr<UWallSlideAbility> WallSlideAbility = FindAbility<UWallSlideAbility>();
+	
+	if (WallSlideAbility && WallSlideAbility->IsInProgress())
 	{
-		WallJump();
+		WallSlideAbility->Activate();
 		return;
 	}
 
@@ -222,37 +224,6 @@ void APlayerCharacter::Shoot()
 	Weapon->StartFire();
 }
 
-bool APlayerCharacter::DetectWall(FVector& OutWallNormal) const
-{
-	const FVector Start = GetActorLocation();
-
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(WallSlideTrace), false);
-	QueryParams.AddIgnoredActor(this);
-
-	static constexpr int32 NumDirections = 8;
-	for (int32 i = 0; i < NumDirections; ++i)
-	{
-		const float Angle = (360.f / NumDirections) * i;
-		const FVector Dir = FRotator(0.f, Angle, 0.f).RotateVector(FVector::ForwardVector);
-		const FVector End = Start + Dir * WallTraceDistance;
-
-		FHitResult Hit;
-		const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams);
-
-		if (bDrawDebugWallTrace)
-		{
-			DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, 0.f, 0, 1.f);
-		}
-
-		if (bHit)
-		{
-			OutWallNormal = Hit.Normal;
-			return true;
-		}
-	}
-	return false;
-}
-
 void APlayerCharacter::PlayShootCameraShake() const
 {
    if (ShootCameraShakeClass && Controller)
@@ -284,7 +255,7 @@ void APlayerCharacter::UpdateCameraBob(const float DeltaTime)
 
     // While sliding, the smooth camera drop (handled in UpdateSlideVisuals) takes over -
     // footstep bob would fight it and look jittery on top of a slide.
-    TObjectPtr<UDashAbility> DashAbility = Cast<UDashAbility>(FindAbility(UDashAbility::StaticClass()));
+    TObjectPtr<UDashAbility> DashAbility = FindAbility<UDashAbility>();
     const bool bIsSliding = DashAbility ? DashAbility->IsOnCooldown() : false;
     const bool bShouldBob = SpeedRatio > KINDA_SMALL_NUMBER && GetCharacterMovement()->IsMovingOnGround() && !bIsSliding;
     if (bShouldBob)
@@ -339,7 +310,8 @@ void APlayerCharacter::UpdateSlideVisuals(const float DeltaTime)
 	// rise back to normal once the slide ends. The actual displacement is
 	// applied in UpdateCameraBob so it composes cleanly with footstep bob.
 	// -------------------------------------------------------------
-	const TObjectPtr<UDashAbility> DashAbility = Cast<UDashAbility>(FindAbility(UDashAbility::StaticClass()));
+	// const TObjectPtr<UDashAbility> DashAbility = Cast<UDashAbility>(FindAbility(UDashAbility::StaticClass()));
+	const TObjectPtr<UDashAbility> DashAbility = FindAbility<UDashAbility>();
 	const bool bIsSliding = DashAbility ? DashAbility->IsOnCooldown() : false;
 	const float TargetCameraSlideOffset = bIsSliding ? -SlideCameraDropAmount : 0.f;
 	CurrentSlideCameraOffset = FMath::FInterpTo(
@@ -356,66 +328,5 @@ void APlayerCharacter::UpdateSlideVisuals(const float DeltaTime)
 	if (IsValid(WeaponComponent))
 	{
 	  WeaponComponent->SetRelativeRotation(WeaponRelativeRotation + CurrentGunSlideRotationOffset);
-	}
-}
-
-void APlayerCharacter::UpdateWallSlide(const float DeltaTime)
-{
-	const TObjectPtr<UCharacterMovementComponent> MoveComp = GetCharacterMovement();
-	if (!MoveComp)
-	{
-		return;
-	}
-
-	if (WallJumpCooldownRemaining > 0.f)
-	{
-		WallJumpCooldownRemaining -= DeltaTime;
-	}
-
-	const bool bFalling = MoveComp->IsFalling();
-	const bool bMovingDown = GetVelocity().Z < 0.f;
-
-	FVector WallNormal;
-	const bool bWallDetected = bFalling && bMovingDown && WallJumpCooldownRemaining <= 0.f && DetectWall(WallNormal);
-
-	bIsWallSliding = bWallDetected;
-
-	if (bIsWallSliding)
-	{
-		CurrentWallNormal = WallNormal;
-		MoveComp->GravityScale = WallSlideGravityScale;
-	}
-	else
-	{
-		MoveComp->GravityScale = 1.6f;
-	}
-
-	// Lean the camera toward the wall - use camera yaw (not actor yaw), since the capsule
-	// never rotates with the mouse (bUseControllerRotationYaw is false on this pawn).
-	float TargetRoll = 0.f;
-	if (bIsWallSliding && Controller)
-	{
-		const FRotator YawRotation(0.f, Controller->GetControlRotation().Yaw, 0.f);
-		const FVector CameraRight = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		const float Side = FVector::DotProduct(CurrentWallNormal, CameraRight);
-		TargetRoll = (Side > 0.f) ? WallSlideCameraRollDegrees : -WallSlideCameraRollDegrees;
-	}
-
-	CurrentCameraRollOffset = FMath::FInterpTo(CurrentCameraRollOffset, TargetRoll, DeltaTime, WallSlideCameraRollInterpSpeed);
-}
-
-void APlayerCharacter::WallJump()
-{
-	FVector LaunchVelocity = CurrentWallNormal * WallJumpAwayStrength;
-	LaunchVelocity.Z = WallJumpUpStrength;
-
-	LaunchCharacter(LaunchVelocity, true, true);
-
-	bIsWallSliding = false;
-	WallJumpCooldownRemaining = WallJumpReattachCooldown;
-
-	if (const TObjectPtr<UCharacterMovementComponent> MoveComp = GetCharacterMovement())
-	{
-		MoveComp->GravityScale = 1.6f;
 	}
 }
