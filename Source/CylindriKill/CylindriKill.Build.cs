@@ -8,7 +8,19 @@ public class CylindriKill : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput","Paper2D", "NavigationSystem", "AIModule" });
+		PublicDependencyModuleNames.AddRange(new string[] { 
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput",
+			"Paper2D", 
+			"NavigationSystem", 
+			"AIModule",
+            "UMG", 
+			"Slate",
+            "SlateCore"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

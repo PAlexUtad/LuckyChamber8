@@ -11,6 +11,7 @@
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Component/HitWidgetComponent.h"
 
 // Sets default values
 ABaseWeapon::ABaseWeapon()
@@ -322,11 +323,24 @@ void ABaseWeapon::Fire()
     // 5. Apply Damage
     if (bHit && HitResult.GetActor())
     {
-       if (UHealthComponent* TargetHealth = UHealthComponent::FindHealthComponent(HitResult.GetActor()))
-       {
-          AController* InstigatorController = OwningPawn ? OwningPawn->GetController() : nullptr;
-          TargetHealth->ApplyDamage(FinalDamage, this, InstigatorController);
-       }
+		if (UHealthComponent* TargetHealth = UHealthComponent::FindHealthComponent(HitResult.GetActor()))
+		{
+			AController* InstigatorController = OwningPawn ? OwningPawn->GetController() : nullptr;          
+			TargetHealth->ApplyDamage(FinalDamage, this, InstigatorController);
+		}
+
+		UHitWidgetComponent* HitWidget = HitResult.GetActor() ? HitResult.GetActor()->FindComponentByClass<UHitWidgetComponent>() : nullptr;
+		if (HitWidget)
+		{
+			FHitResult HitInfo;
+			FVector Loc = HitResult.ImpactPoint - HitResult.GetActor()->GetActorLocation();
+			HitWidget->SetRelativeLocation(FVector(10.f, Loc.Y, Loc.Z));
+
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, Loc.ToString());
+			}
+		}
     }
 
     // 6. Consume bullet

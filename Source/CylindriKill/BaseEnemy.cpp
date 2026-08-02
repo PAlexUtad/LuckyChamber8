@@ -4,6 +4,7 @@
 
 #include "BaseProjectile.h"
 #include "CylindriKill/Component/HealthComponent.h"
+#include "CylindriKill/Component/HitWidgetComponent.h" 
 #include "TimerManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -11,6 +12,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
 #include "Runtime/AIModule/Classes/AIController.h"
+#include <Internationalization/Text.h>
+#include <Engine/DamageEvents.h> // FDamageEvent
 
 ABaseEnemy::ABaseEnemy()
 {
@@ -43,6 +46,10 @@ ABaseEnemy::ABaseEnemy()
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->MaxHealth = 1.f; // preserves the old one-shot-kill feel; raise on a per-enemy Blueprint for tankier types
 
+	DamageWidgetComponent = CreateDefaultSubobject<UHitWidgetComponent>(TEXT("HitWidgetComponent"));
+	DamageWidgetComponent->SetupAttachment(RootComponent);
+	DamageWidgetComponent->SetRelativeLocation(FVector(10.f, 0.f, 0.f));
+
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
@@ -54,6 +61,7 @@ void ABaseEnemy::BeginPlay()
 	if (HealthComponent)
 	{
 		HealthComponent->OnDeath.AddDynamic(this, &ABaseEnemy::HandleDeath);
+		HealthComponent->OnHealthChanged.AddDynamic(DamageWidgetComponent, &UHitWidgetComponent::SpawnDamageText);
 	}
 
 	if (GetWorld() && ProjectileClass)
@@ -136,6 +144,7 @@ float ABaseEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent
 
 	return ActualDamage;
 }
+
 void ABaseEnemy::HandleDeath(AActor* DamageCauser)
 {
 	if (GEngine)

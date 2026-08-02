@@ -6,6 +6,8 @@
 #include "Runtime/AIModule/Classes/AIController.h"
 #include "BaseEnemy.generated.h"
 
+// Forward Declaration
+class UHitWidgetComponent;
 
 UCLASS()
 class CYLINDRIKILL_API ABaseEnemy : public ACharacter
@@ -26,6 +28,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UHealthComponent> HealthComponent;
+
+	// The component that holds and renders the widget in 3D space
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHitWidgetComponent> DamageWidgetComponent;
 
 	UFUNCTION()
 	void HandleDeath(AActor* DamageCauser);
@@ -57,7 +63,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void StopNavMovement();
 
-
 	/** If the player is farther than this, the enemy goes fully dormant - no movement, no shooting, no facing. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float MaxActivationRange = 4000.f;
@@ -65,6 +70,7 @@ protected:
 	/** True if the player is currently within MaxActivationRange (cheap to check, cached once per tick). */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	bool IsPlayerInRange() const;
+
 private:
 	void RotateToFacePlayer(float DeltaTime);
 };
