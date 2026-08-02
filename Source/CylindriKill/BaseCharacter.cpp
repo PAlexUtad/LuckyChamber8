@@ -66,14 +66,3 @@ void ABaseCharacter::ActivateAbility(const TSubclassOf<UBaseAbility> AbilityClas
 		}
 	}
 }
-
-UBaseAbility* ABaseCharacter::FindAbility(const TSubclassOf<UBaseAbility> AbilityClass)
-{
-	for (TObjectPtr Ability : Abilities)
-	{
-		if (Ability->GetClass() == AbilityClass)
-			return Ability;
-	}
-	
-	return nullptr;
-}

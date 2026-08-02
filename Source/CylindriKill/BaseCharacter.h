@@ -11,6 +11,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BaseAbility.h"
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
@@ -58,5 +59,19 @@ protected:
 	// ------------------------------------------------------------------
 	UFUNCTION(BlueprintCallable) virtual void Die(AActor* Aggressor);
 	UFUNCTION(BlueprintCallable) virtual void ActivateAbility(const TSubclassOf<UBaseAbility> AbilityClass);
-	UFUNCTION(BlueprintCallable) virtual UBaseAbility* FindAbility(const TSubclassOf<UBaseAbility> AbilityClass);
+	
+	// ------------------------------------------------------------------
+	// Internal Methods
+	// ------------------------------------------------------------------
+	template <typename T>
+	TObjectPtr<T> FindAbility() const
+	{
+		static_assert(TIsDerivedFrom<T, UBaseAbility>::IsDerived, "T must derive from UBaseAbility");
+		// return Cast<T>(FindAbility(T::StaticClass()));
+		for (TObjectPtr Ability : Abilities)
+			if (Ability && Ability->IsA<T>())
+				return Cast<T>(Ability);
+		
+		return nullptr;
+	}
 };

@@ -44,3 +44,8 @@ bool UBaseAbility::IsOnCooldown() const
 {
 	return GetWorld()->GetTimerManager().IsTimerActive(CooldownTimerHandle);
 }
+
+bool UBaseAbility::IsInProgress() const
+{
+	return false;
+}

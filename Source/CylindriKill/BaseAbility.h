@@ -45,4 +45,5 @@ public:
 	// ------------------------------------------------------------------
 	virtual bool Activate();
 	virtual bool IsOnCooldown() const;
+	virtual bool IsInProgress() const;
 };
